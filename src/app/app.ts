@@ -1,7 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { SwUpdate } from '@angular/service-worker';
 import { StoreService } from './core/services/store.service';
+import { QuickAdd } from './features/quick-add/quick-add';
 
 interface NavItem {
   path: string;
@@ -11,7 +12,7 @@ interface NavItem {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, QuickAdd],
   template: `
     <header class="topbar">
       <div class="topbar-inner">
@@ -77,6 +78,10 @@ interface NavItem {
       }
     </main>
 
+    @if (store.loaded()) {
+      <app-quick-add />
+    }
+
     <nav class="mobile-nav">
       @for (item of nav; track item.path) {
         <a
@@ -96,6 +101,7 @@ export class App {
   protected readonly store = inject(StoreService);
   private readonly swUpdate = inject(SwUpdate);
   protected readonly updateAvailable = signal(false);
+  private readonly quickAdd = viewChild(QuickAdd);
 
   protected readonly nav: NavItem[] = [
     { path: '/', label: 'Accueil', icon: '🏠' },
@@ -117,6 +123,12 @@ export class App {
         if (event.type === 'VERSION_READY') this.updateAvailable.set(true);
       });
     }
+  }
+
+  /** Les raccourcis de l'ajout rapide sont écoutés ici, faute de FAB monté en permanence. */
+  @HostListener('window:keydown', ['$event'])
+  protected onKeydown(event: KeyboardEvent): void {
+    this.quickAdd()?.handleKey(event);
   }
 
   protected async applyUpdate(): Promise<void> {

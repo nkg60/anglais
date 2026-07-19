@@ -34,10 +34,12 @@ modifications ne partent pas et un bandeau le signale.
 > connaissant l'URL peut lire, modifier et effacer les cartes.** Gardez l'adresse privée. Pour lever
 > cette limite, il faudrait ajouter une clé de synchronisation secrète ou une vraie authentification.
 
-📄 **[docs/DONNEES.md](docs/DONNEES.md)** — le document de référence, en deux parties : une visite
-guidée de tous les écrans avec captures, accessible sans rien connaître du projet ; puis
-l'architecture de stockage, le contrat de l'API, les écritures concurrentes et le format des
-données champ par champ.
+## Documentation
+
+- 📘 **[docs/GUIDE.md](docs/GUIDE.md)** — visite guidée de tous les écrans avec captures, et
+  explication des chiffres affichés. Se lit sans rien connaître du projet.
+- 🗄️ **[docs/DONNEES.md](docs/DONNEES.md)** — architecture de stockage, contrat de l'API, écritures
+  concurrentes, export/import et format des données champ par champ.
 
 ## Démarrer
 
@@ -123,6 +125,7 @@ Le badge « Maîtrisé » apparaît à partir de 85 %, avec au moins 10 cartes e
 netlify/functions/
 └── data.mts          API /api/data adossée à Netlify Blobs
 docs/
+├── GUIDE.md          visite guidée des écrans, avec captures
 └── DONNEES.md        stockage, API, export/import et schéma détaillé
 src/app/
 ├── core/
@@ -136,11 +139,19 @@ src/app/
     ├── priming/      checklist d'amorçage
     ├── encoding/     notes structurées en 5 méthodes
     ├── flashcards/   gestion des cartes
+    ├── quick-add/    ajout rapide depuis n’importe quel écran
+    ├── quick-add/    ajout rapide de cartes depuis n’importe quel écran
     ├── review/       session de récupération et session mixte
     ├── stats/        rétention, activité hebdomadaire, ancrage
     └── backup/       export / import / réinitialisation
 ```
 
-## Raccourcis clavier en session
+## Raccourcis clavier
 
-`Espace` révèle la réponse · `1` raté · `2` difficile · `3` facile
+| Contexte | Touche | Effet |
+|---|---|---|
+| Partout | `N` | Ouvrir l'ajout rapide d'une carte |
+| Ajout rapide | `Ctrl + Entrée` | Valider la carte et enchaîner |
+| Ajout rapide | `Échap` | Fermer le formulaire |
+| En session | `Espace` | Révéler la réponse |
+| En session | `1` `2` `3` | Raté · difficile · facile |
