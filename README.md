@@ -34,8 +34,10 @@ modifications ne partent pas et un bandeau le signale.
 > connaissant l'URL peut lire, modifier et effacer les cartes.** Gardez l'adresse privée. Pour lever
 > cette limite, il faudrait ajouter une clé de synchronisation secrète ou une vraie authentification.
 
-📄 **[docs/DONNEES.md](docs/DONNEES.md)** — architecture de stockage, contrat de l'API, gestion des
-écritures concurrentes, format du fichier de sauvegarde et description champ par champ.
+📄 **[docs/DONNEES.md](docs/DONNEES.md)** — le document de référence, en deux parties : une visite
+guidée de tous les écrans avec captures, accessible sans rien connaître du projet ; puis
+l'architecture de stockage, le contrat de l'API, les écritures concurrentes et le format des
+données champ par champ.
 
 ## Démarrer
 

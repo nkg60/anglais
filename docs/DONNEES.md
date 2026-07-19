@@ -1,7 +1,243 @@
-# Données : stockage, export et import
+# PERRIO — fonctionnement de l'application et données
 
-Ce document décrit où vivent les données de PERRIO, le format exact du fichier de sauvegarde, et
-le rôle de chaque champ.
+Ce document se lit à deux niveaux. La **partie I** explique ce que fait le logiciel et à quoi
+ressemble chaque écran : elle ne suppose aucune connaissance préalable. La **partie II** décrit le
+stockage et le format des données, pour qui doit intervenir sur le code.
+
+---
+
+# Partie I — Comprendre l'application
+
+## 1. À quoi sert PERRIO
+
+PERRIO est une application de **révision par cartes mémoire**. On y fabrique des cartes
+question / réponse, puis l'application décide chaque jour lesquelles il faut revoir.
+
+Le principe est celui de la **répétition espacée** : une notion qu'on vient d'apprendre s'oublie en
+quelques jours, mais chaque fois qu'on parvient à se la remémorer, elle tient plus longtemps.
+Plutôt que de tout relire indéfiniment, on ne revoit chaque carte qu'au moment où l'on est sur le
+point de l'oublier. Une carte réussie revient dans 1 jour, puis 3, puis 8, puis 20… Une carte ratée
+repart du début.
+
+Cela ressemble à Anki ou Quizlet. La différence tient au cadre qui entoure les cartes : PERRIO
+n'attaque pas directement la mémorisation, il fait passer chaque sujet par **six étapes** qui
+préparent le terrain avant les cartes, puis creusent après.
+
+Le contenu de démonstration porte sur l'anglais — verbes à particule et temps verbaux — mais
+l'application est indifférente au domaine : elle marche aussi bien pour du droit, de l'anatomie ou
+des commandes Docker.
+
+---
+
+## 2. Le système PERRIO en deux minutes
+
+PERRIO est l'acronyme de six processus d'apprentissage. Le raisonnement de départ tient en une
+phrase :
+
+> Une information vue passe par un **amorçage** puis un **encodage** avant d'atteindre la mémoire ;
+> chaque **récupération** réussie renforce sa trace. Ce qui n'est ni encodé ni récupéré est oublié.
+
+| | Étape | Ce que ça veut dire | Ce que fait l'application |
+|---|---|---|---|
+| **P** | Priming — Amorçage | Préparer le cerveau *avant* d'étudier, pour qu'il ait des crochets où accrocher la suite | Trois questions à remplir en deux minutes |
+| **E** | Encoding — Encodage | Organiser l'information au lieu de l'avaler brute | Un éditeur de notes en cinq sections |
+| **R** | Reference — Référence | Déposer l'information quelque part pour pouvoir y revenir | La création des flashcards |
+| **R** | Retrieval — Récupération | Se tester activement : c'est l'effort de rappel qui ancre, pas la relecture | Le mode révision |
+| **I** | Interleaving — Entrelacement | Alterner les sujets au lieu de bloquer sur un seul | La session mixte |
+| **O** | Overlearning — Sur-apprentissage | Continuer au-delà du « je crois que je sais » | L'indicateur de maîtrise |
+
+L'ordre est une progression logique, pas une contrainte : rien n'oblige à faire l'amorçage avant de
+créer des cartes. L'application affiche simplement où en est chaque sujet.
+
+---
+
+## 3. Visite guidée des écrans
+
+Les captures ci-dessous proviennent de l'application réelle, remplie avec le contenu de
+démonstration.
+
+### 3.1 Tableau de bord — la page d'accueil
+
+![Tableau de bord](captures/01-tableau-de-bord.png)
+
+Elle répond à une seule question : *qu'est-ce que je fais maintenant ?*
+
+- **À réviser** — le nombre de cartes dont la date de révision est arrivée. C'est le seul chiffre
+  qui compte au quotidien.
+- **Jours d'affilée** — la série. Un jour compte dès qu'au moins une session a eu lieu ; elle
+  survit à la journée en cours tant qu'on a étudié la veille.
+- **Cartes au total** et **maîtrise globale** — l'état d'ensemble.
+
+En dessous, chaque sujet affiche sa barre de maîtrise et le nombre de cartes qui l'attendent. Le
+bouton **Démarrer une session** n'apparaît que s'il y a effectivement quelque chose à réviser.
+
+### 3.2 Page d'un sujet — le pipeline PERRIO
+
+![Pipeline PERRIO](captures/02-pipeline-perrio.png)
+
+C'est l'écran caractéristique de l'application. Les six étapes sont présentées comme un chemin :
+celles qui sont entamées portent une coche colorée, les autres un numéro gris. À droite de chaque
+étape, un compteur dit où l'on en est — *1 amorçage*, *8 cartes*, *4 révisions*.
+
+En haut, la **maîtrise** du sujet est décomposée en ses trois composantes (réussite, ancrage,
+régularité) pour qu'un pourcentage bas soit interprétable : 43 % avec « ancrage 0 % » ne signifie
+pas qu'on répond mal, mais que les cartes sont encore jeunes.
+
+Chaque étape a son bouton d'action, et toutes sont accessibles à tout moment.
+
+### 3.3 Amorçage — trois questions avant de commencer
+
+![Amorçage](captures/03-amorcage.png)
+
+Trois champs libres : *Que sais-je déjà ?*, *Qu'est-ce que je veux apprendre ?*, *Pourquoi c'est
+important ?*
+
+L'intérêt n'est pas dans ce qu'on écrit mais dans le fait de l'écrire : formuler ce qu'on sait déjà
+réactive les connaissances existantes, et se donner un objectif précis vaut mieux que « tout
+comprendre ». Chaque amorçage est horodaté et conservé — relire ceux d'il y a un mois montre le
+chemin parcouru.
+
+### 3.4 Encodage — cinq façons de digérer l'information
+
+![Éditeur de notes d'encodage](captures/04-encodage.png)
+
+Un éditeur de notes découpé en cinq sections, une par méthode d'encodage :
+
+1. **Regroupement** — ranger par paquets de 3 à 5 plutôt qu'en liste plate.
+2. **Simplification** — l'expliquer à un enfant de 10 ans. Si on n'y arrive pas, on ne l'a pas
+   compris.
+3. **Analogies** — rattacher l'inconnu à du familier.
+4. **Connexions** — relier à d'autres sujets, éventuellement par un lien explicite vers l'un d'eux.
+5. **Compréhension intuitive** — le principe sous-jacent, celui qui permet de retrouver la règle
+   sans l'avoir apprise par cœur.
+
+Ces sections sont un garde-fou : laissé libre, on recopie le cours ; contraint par cinq cases, on
+est obligé de le transformer.
+
+### 3.5 Flashcards — la mémoire externe
+
+![Gestion des flashcards](captures/05-flashcards.png)
+
+Les cartes recto / verso du sujet. Chacune peut porter des **tags** (ici *phrasal verbs*, *piège*),
+qui servent à filtrer la liste.
+
+Sous chaque carte figure son état : *nouvelle*, ou bien son taux de réussite et la date de sa
+prochaine apparition. Trois actions sont disponibles : **Modifier**, **Réinitialiser** (la carte
+repart de zéro dans le cycle de répétition) et **Suspendre** (elle sort des révisions sans être
+supprimée).
+
+### 3.6 Réviser — le choix de la session
+
+![Choix de la session](captures/06-reviser-choix.png)
+
+Deux modes :
+
+- **Récupération** — un ou plusieurs sujets, cartes mélangées au hasard.
+- **Session mixte** — les cartes alternent d'un sujet à l'autre à chaque question. C'est
+  volontairement plus difficile : passer sans arrêt d'un contexte à l'autre oblige à identifier de
+  quoi il s'agit avant de répondre, ce qui ancre mieux qu'une série homogène.
+
+La liste des sujets indique combien de cartes chacun a de dues, et le total prêt à être révisé.
+
+### 3.7 En session
+
+![Carte en cours de révision](captures/07-session-carte.png)
+
+Une carte s'affiche, question seule. On essaie de répondre **de tête** — c'est l'effort de rappel
+qui fait tout le travail — puis on révèle la réponse et on s'auto-évalue :
+
+| Bouton | Quand l'utiliser | Effet |
+|---|---|---|
+| **Raté** | Je ne savais pas | La carte revient avant la fin de la session |
+| **Difficile** | Retrouvé, mais péniblement | Intervalle à peine allongé |
+| **Facile** | Immédiat | Intervalle nettement allongé |
+
+Chaque bouton affiche le délai qu'il déclenche, donc aucune surprise. Au clavier : `Espace` révèle,
+puis `1`, `2`, `3`.
+
+À la fin, un bilan récapitule le nombre de révisions et le taux de réussite.
+
+![Bilan de session](captures/08-bilan.png)
+
+### 3.8 Statistiques
+
+![Statistiques](captures/09-statistiques.png)
+
+Quatre indicateurs en tête, puis :
+
+- **Taux de réussite sur 30 jours** — les jours sans révision comptent comme un creux, la courbe
+  reflète donc autant la régularité que la performance.
+- **Sessions par semaine** — la constance sur deux mois.
+- **Ancrage des cartes** — la répartition entre *nouvelles*, *en cours* et *ancrées*. Une carte est
+  dite ancrée quand son intervalle a dépassé 21 jours. C'est l'indicateur le plus honnête :
+  tant que la barre verte est vide, rien n'est encore acquis à long terme.
+- **Maîtrise par sujet** — où concentrer l'effort.
+
+### 3.9 Données
+
+![Écran Données](captures/10-donnees.png)
+
+L'inventaire de ce que contient l'espace, l'export et l'import d'une sauvegarde JSON, et la
+réinitialisation complète. Le fonctionnement détaillé de ces opérations fait l'objet de la partie II.
+
+### 3.10 Sur téléphone
+
+![Vue mobile](captures/11-mobile.png)
+
+L'interface est conçue pour le mobile d'abord : la navigation passe en bas de l'écran, à portée de
+pouce. L'application s'installe depuis le navigateur (Chrome → *Ajouter à l'écran d'accueil*) et
+s'ouvre alors en plein écran, comme une application native.
+
+---
+
+## 4. D'où viennent les chiffres
+
+### La planification des révisions
+
+L'algorithme est une version simplifiée de **SM-2**, celui d'Anki. Chaque carte porte un
+*intervalle* (dans combien de jours la revoir) et une *facilité* (à quel point elle est aisée pour
+vous, de 1,3 à 2,8 — départ à 2,5).
+
+| Note | Intervalle | Facilité |
+|---|---|---|
+| Raté | remis à zéro, la carte revient dans la session | −0,20 |
+| Difficile | × 1,2 | −0,15 |
+| Facile | 1 jour, puis 3 jours, puis × facilité | +0,10 |
+
+Une carte souvent ratée voit sa facilité baisser, donc ses intervalles se resserrer : elle revient
+plus souvent, automatiquement. À l'inverse, une carte maîtrisée s'espace vite et cesse d'encombrer.
+
+Détail qui surprend au début : sur une carte neuve, *Difficile* et *Facile* donnent tous deux
+1 jour. Les intervalles ne divergent qu'à partir de la deuxième réussite.
+
+### La maîtrise d'un sujet
+
+Un pourcentage de 0 à 100, pondéré ainsi :
+
+| Poids | Composante | Mesure |
+|---|---|---|
+| 55 % | Réussite | Part de réponses non ratées sur les 20 dernières révisions |
+| 30 % | Ancrage | Part des cartes ayant dépassé 21 jours d'intervalle |
+| 15 % | Régularité | Jours étudiés sur les 14 derniers |
+
+Le badge **🏆 Maîtrisé** apparaît à partir de 85 %, et seulement avec au moins 10 cartes et
+3 sessions — sans quoi un sujet d'une seule carte réussie afficherait la maîtrise maximale.
+
+La composante *ancrage* est ce qui empêche de tricher : elle ne peut monter qu'avec le temps, aucune
+session intensive ne la fait bouger en un jour.
+
+### La série
+
+Le nombre de jours consécutifs comportant au moins une session. Elle ne se casse pas parce qu'on n'a
+pas encore étudié aujourd'hui : tant qu'on a étudié hier, elle tient.
+
+---
+
+# Partie II — Les données
+
+Cette partie s'adresse à qui doit intervenir sur le code, migrer les données ou reprendre le projet.
+Elle décrit où vivent les données, le format exact du fichier de sauvegarde et le rôle de chaque
+champ.
 
 - Fonction serveur : [`netlify/functions/data.mts`](../netlify/functions/data.mts)
 - Client HTTP : [`src/app/core/data/data-api.service.ts`](../src/app/core/data/data-api.service.ts)
@@ -12,7 +248,7 @@ le rôle de chaque champ.
 
 ---
 
-## 1. Où sont stockées les données
+## 5. Où sont stockées les données
 
 Côté **serveur**, dans **Netlify Blobs** : un unique document JSON, sous la clé `dataset` du store
 `perrio`, contenant les six collections. Les données suivent donc tous vos appareils, et vider le
@@ -59,7 +295,7 @@ croire à un espace vide.
 
 ---
 
-## 2. L'API
+## 6. L'API
 
 Une seule fonction Netlify, exposée sur `/api/data`.
 
@@ -83,13 +319,13 @@ enregistrement. Quand un ETag est disponible, il sert en complément à demander
 conditionnelle (`onlyIfMatch`), ce qui ferme la fenêtre entre la lecture et l'écriture.
 
 Côté client, un 409 n'est pas une erreur affichée à l'utilisateur : `StoreService` **fusionne**
-l'état distant avec le sien (mêmes règles qu'à l'import, voir § 4) puis réessaie sur la nouvelle
+l'état distant avec le sien (mêmes règles qu'à l'import, voir § 8) puis réessaie sur la nouvelle
 version, jusqu'à cinq fois. Deux onglets qui créent chacun un sujet au même instant conservent donc
 les deux.
 
 ---
 
-## 3. Exporter
+## 7. Exporter
 
 Écran **Données** → *Télécharger la sauvegarde*.
 
@@ -99,7 +335,7 @@ sans filtrage ni compression. Il est lisible et modifiable à la main.
 Les données vivant désormais côté serveur, l'export n'est plus l'unique filet de sécurité : il sert
 à archiver un état avant une manipulation risquée, ou à transporter un jeu de cartes ailleurs.
 
-## 4. Importer
+## 8. Importer
 
 Écran **Données** → choix du mode → sélection du fichier.
 
@@ -131,7 +367,7 @@ travail fait de part et d'autre, **à condition que les modifications portent su
 différentes** : si la même carte a été modifiée des deux côtés, la plus récente écrase l'autre
 sans fusion champ par champ ni avertissement.
 
-Ces mêmes règles servent à résoudre les conflits d'écriture entre onglets (§ 2) : c'est la même
+Ces mêmes règles servent à résoudre les conflits d'écriture entre onglets (§ 6) : c'est la même
 fonction `mergeDatasets`, pour qu'il n'existe qu'une seule définition de « fusionner » dans le code.
 
 ### Mode « Remplacer »
@@ -156,7 +392,7 @@ vaut **pour tous les appareils**.
 
 ---
 
-## 5. Format du fichier
+## 9. Format du fichier
 
 ```jsonc
 {
@@ -181,7 +417,7 @@ Conventions communes à toutes les collections :
 
 ---
 
-## 6. Les six collections
+## 10. Les six collections
 
 ### `subjects` — les sujets d'étude
 
@@ -334,7 +570,7 @@ contient au moins une session) et la composante **régularité** de la maîtrise
 
 ---
 
-## 7. Volumétrie et performance
+## 11. Volumétrie et performance
 
 Il n'y a **ni index ni requêtes** : le document entier est chargé en mémoire au démarrage, et
 chaque écran filtre les tableaux avec `.filter()`. C'est assumé — pour quelques milliers de lignes,
@@ -354,7 +590,7 @@ dernières), ou scinder le blob en un document par collection pour n'écrire que
 
 ---
 
-## 8. Modifier une sauvegarde à la main
+## 12. Modifier une sauvegarde à la main
 
 Le fichier étant du JSON simple, il est possible d'y injecter des cartes générées ailleurs
 (tableur, script, export d'un autre outil). Pour qu'un import réussisse :
@@ -375,7 +611,7 @@ Le fichier étant du JSON simple, il est possible d'y injecter des cartes géné
 
 ---
 
-## 9. Faire évoluer le schéma
+## 13. Faire évoluer le schéma
 
 Il n'y a pas de migration automatique : le document stocké n'est jamais transformé, il est relu tel
 quel. Trois points d'attention :
@@ -394,7 +630,7 @@ n'oblige pas à toucher la fonction Netlify.
 
 ---
 
-## 10. Travailler sur les données en local
+## 14. Travailler sur les données en local
 
 Le serveur de développement doit servir la fonction en même temps qu'Angular :
 
