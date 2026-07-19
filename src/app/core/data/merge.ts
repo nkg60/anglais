@@ -74,6 +74,7 @@ export function mergeDatasets(
 ): { result: Dataset; report: MergeReport } {
   const report: MergeReport = { ajoutes: 0, misAJour: 0, ignores: 0, orphelins: 0 };
 
+  const matieres = mergeVersioned(base.matieres, incoming.matieres, report);
   const subjects = mergeVersioned(base.subjects, incoming.subjects, report);
   const knownSubjects = new Set(subjects.map((s) => s.id));
 
@@ -97,7 +98,7 @@ export function mergeDatasets(
   const reviews = mergeAppendOnly(base.reviews, incomingReviews, report);
 
   return {
-    result: { subjects, primings, notes, flashcards, reviews, sessions },
+    result: { matieres, subjects, primings, notes, flashcards, reviews, sessions },
     report,
   };
 }

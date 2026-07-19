@@ -10,6 +10,13 @@ Pour le stockage et le format des données, voir [DONNEES.md](DONNEES.md).
 PERRIO est une application de **révision par cartes mémoire**. On y fabrique des cartes
 question / réponse, puis l'application décide chaque jour lesquelles il faut revoir.
 
+Le contenu s'organise sur trois niveaux :
+
+> **Matière** (Anglais, Droit…) → **Sujet** (Phrasal verbs, Temps verbaux…) → **Cartes**
+
+On choisit sa matière en arrivant, et tout le reste — tableau de bord, révisions, statistiques — se
+lit dans ce périmètre.
+
 Le principe est celui de la **répétition espacée** : une notion qu'on vient d'apprendre s'oublie en
 quelques jours, mais chaque fois qu'on parvient à se la remémorer, elle tient plus longtemps.
 Plutôt que de tout relire indéfiniment, on ne revoit chaque carte qu'au moment où l'on est sur le
@@ -21,8 +28,8 @@ n'attaque pas directement la mémorisation, il fait passer chaque sujet par **si
 préparent le terrain avant les cartes, puis creusent après.
 
 Le contenu de démonstration porte sur l'anglais — verbes à particule et temps verbaux — mais
-l'application est indifférente au domaine : elle marche aussi bien pour du droit, de l'anatomie ou
-des commandes Docker.
+l'application est indifférente au domaine. Rien n'empêche d'ajouter une matière « Droit » ou
+« Anatomie » : elles cohabiteront sans jamais se mélanger.
 
 ---
 
@@ -53,7 +60,23 @@ créer des cartes. L'application affiche simplement où en est chaque sujet.
 Les captures ci-dessous proviennent de l'application réelle, remplie avec le contenu de
 démonstration.
 
-### 3.1 Tableau de bord — la page d'accueil
+### 3.1 Choix de la matière — l'écran d'entrée
+
+![Choix de la matière](captures/00-matieres.png)
+
+Premier écran à l'ouverture. Chaque tuile annonce le nombre de sujets et de cartes qu'elle contient.
+
+Le choix est **mémorisé sur cet appareil** : les fois suivantes, l'application ouvre directement le
+tableau de bord de la dernière matière consultée. Pour en changer, il suffit de cliquer sur son nom
+dans la barre du haut.
+
+Une matière est **étanche** : ses sujets, ses cartes, sa série de révision et ses statistiques lui
+appartiennent. Réviser du droit ne perturbe donc pas les compteurs d'anglais, et une session mixte
+n'ira jamais chercher une carte d'une autre matière.
+
+**＋ Ajouter une matière** en crée une nouvelle, avec son icône et sa couleur.
+
+### 3.2 Tableau de bord — la page d'accueil
 
 ![Tableau de bord](captures/01-tableau-de-bord.png)
 
@@ -68,7 +91,7 @@ Elle répond à une seule question : *qu'est-ce que je fais maintenant ?*
 En dessous, chaque sujet affiche sa barre de maîtrise et le nombre de cartes qui l'attendent. Le
 bouton **Démarrer une session** n'apparaît que s'il y a effectivement quelque chose à réviser.
 
-### 3.2 Page d'un sujet — le pipeline PERRIO
+### 3.3 Page d'un sujet — le pipeline PERRIO
 
 ![Pipeline PERRIO](captures/02-pipeline-perrio.png)
 
@@ -82,7 +105,7 @@ pas qu'on répond mal, mais que les cartes sont encore jeunes.
 
 Chaque étape a son bouton d'action, et toutes sont accessibles à tout moment.
 
-### 3.3 Amorçage — trois questions avant de commencer
+### 3.4 Amorçage — trois questions avant de commencer
 
 ![Amorçage](captures/03-amorcage.png)
 
@@ -94,7 +117,7 @@ réactive les connaissances existantes, et se donner un objectif précis vaut mi
 comprendre ». Chaque amorçage est horodaté et conservé — relire ceux d'il y a un mois montre le
 chemin parcouru.
 
-### 3.4 Encodage — cinq façons de digérer l'information
+### 3.5 Encodage — cinq façons de digérer l'information
 
 ![Éditeur de notes d'encodage](captures/04-encodage.png)
 
@@ -111,7 +134,7 @@ Un éditeur de notes découpé en cinq sections, une par méthode d'encodage :
 Ces sections sont un garde-fou : laissé libre, on recopie le cours ; contraint par cinq cases, on
 est obligé de le transformer.
 
-### 3.5 Flashcards — la mémoire externe
+### 3.6 Flashcards — la mémoire externe
 
 ![Gestion des flashcards](captures/05-flashcards.png)
 
@@ -123,7 +146,7 @@ prochaine apparition. Trois actions sont disponibles : **Modifier**, **Réinitia
 repart de zéro dans le cycle de répétition) et **Suspendre** (elle sort des révisions sans être
 supprimée).
 
-### 3.6 Ajout rapide — le bouton « + »
+### 3.7 Ajout rapide — le bouton « + »
 
 ![Ajout rapide d'une carte](captures/12-ajout-rapide.png)
 
@@ -141,7 +164,7 @@ couleur prise dans la palette. Les cartes suivantes y sont versées sans le recr
 Au clavier : `N` ouvre le formulaire, `Ctrl + Entrée` valide, `Échap` ferme. Le bouton s'efface
 pendant une session de révision, où il masquerait les boutons de notation.
 
-### 3.7 Réviser — le choix de la session
+### 3.8 Réviser — le choix de la session
 
 ![Choix de la session](captures/06-reviser-choix.png)
 
@@ -154,7 +177,7 @@ Deux modes :
 
 La liste des sujets indique combien de cartes chacun a de dues, et le total prêt à être révisé.
 
-### 3.8 En session
+### 3.9 En session
 
 ![Carte en cours de révision](captures/07-session-carte.png)
 
@@ -174,7 +197,7 @@ puis `1`, `2`, `3`.
 
 ![Bilan de session](captures/08-bilan.png)
 
-### 3.9 Statistiques
+### 3.10 Statistiques
 
 ![Statistiques](captures/09-statistiques.png)
 
@@ -188,14 +211,14 @@ Quatre indicateurs en tête, puis :
   tant que la barre verte est vide, rien n'est encore acquis à long terme.
 - **Maîtrise par sujet** — où concentrer l'effort.
 
-### 3.10 Données
+### 3.11 Données
 
 ![Écran Données](captures/10-donnees.png)
 
 L'inventaire de ce que contient l'espace, l'export et l'import d'une sauvegarde JSON, et la
 réinitialisation complète. Le fonctionnement détaillé de ces opérations fait l'objet de la partie II.
 
-### 3.11 Sur téléphone
+### 3.12 Sur téléphone
 
 ![Vue mobile](captures/11-mobile.png)
 

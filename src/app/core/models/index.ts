@@ -1,7 +1,23 @@
 /** Modèles de données PERRIO. Les identifiants sont des UUID, les dates en ISO 8601. */
 
+/**
+ * Domaine d'étude : Anglais, Droit, Anatomie… Une matière regroupe des sujets
+ * et sert de contexte à toute l'application, choisi au démarrage.
+ */
+export interface Matiere {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  icon: string;
+  createdAt: string;
+  updatedAt: string;
+  archived: boolean;
+}
+
 export interface Subject {
   id: string;
+  matiereId: string;
   name: string;
   description: string;
   color: string;

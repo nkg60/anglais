@@ -3,7 +3,7 @@ import { ConflictError, DataApiService } from '../data/data-api.service';
 import { Dataset, emptyDataset } from '../data/dataset';
 import { mergeDatasets } from '../data/merge';
 import { buildSeed } from '../data/seed';
-import { Flashcard, Note, Priming, Review, StudySession, Subject } from '../models';
+import { Flashcard, Matiere, Note, Priming, Review, StudySession, Subject } from '../models';
 
 export type SyncState = 'chargement' | 'synchronisé' | 'enregistrement' | 'erreur';
 
@@ -24,6 +24,7 @@ const MAX_CONFLICT_RETRIES = 5;
 export class StoreService {
   private readonly api = inject(DataApiService);
 
+  readonly matieres = signal<Matiere[]>([]);
   readonly subjects = signal<Subject[]>([]);
   readonly flashcards = signal<Flashcard[]>([]);
   readonly notes = signal<Note[]>([]);
@@ -45,15 +46,32 @@ export class StoreService {
   private inFlight: Promise<void> | null = null;
   private dirty = false;
 
-  async init(): Promise<void> {
+  private initPromise: Promise<void> | null = null;
+
+  /** Idempotent : plusieurs appelants peuvent attendre le même chargement. */
+  init(): Promise<void> {
+    return (this.initPromise ??= this.doInit());
+  }
+
+  /** À attendre avant toute décision fondée sur les données (gardes de route). */
+  whenReady(): Promise<void> {
+    return this.init();
+  }
+
+  private async doInit(): Promise<void> {
     try {
       const doc = await this.api.load();
       this.token = doc.token;
 
       if (doc.data) {
         this.apply(doc.data);
-        this.syncState.set('synchronisé');
-        this.lastSyncedAt.set(doc.updatedAt);
+        if (doc.migrated) {
+          // Les sujets viennent d'être rattachés à une matière : on le grave.
+          await this.persistNow();
+        } else {
+          this.syncState.set('synchronisé');
+          this.lastSyncedAt.set(doc.updatedAt);
+        }
       } else {
         // Espace serveur encore vide : on y dépose le jeu de démonstration.
         this.apply(buildSeed());
@@ -87,6 +105,7 @@ export class StoreService {
   /** Instantané complet des données en mémoire. */
   snapshot(): Dataset {
     return {
+      matieres: this.matieres(),
       subjects: this.subjects(),
       primings: this.primings(),
       notes: this.notes(),
@@ -121,6 +140,7 @@ export class StoreService {
   }
 
   private apply(data: Dataset): void {
+    this.matieres.set(data.matieres);
     this.subjects.set([...data.subjects].sort((a, b) => a.name.localeCompare(b.name)));
     this.primings.set(data.primings);
     this.notes.set(data.notes);

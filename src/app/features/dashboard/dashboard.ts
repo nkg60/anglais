@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { MatiereService } from '../../core/services/matiere.service';
 import { StatsService } from '../../core/services/stats.service';
-import { StoreService } from '../../core/services/store.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -9,7 +9,7 @@ import { StoreService } from '../../core/services/store.service';
   template: `
     <div class="stack">
       <div>
-        <h1>Bonjour 👋</h1>
+        <h1>{{ matiere()?.icon }} {{ matiere()?.name }}</h1>
         <p class="muted">
           {{
             stats.dueToday()
@@ -190,10 +190,11 @@ import { StoreService } from '../../core/services/store.service';
 })
 export class Dashboard {
   protected readonly stats = inject(StatsService);
-  private readonly store = inject(StoreService);
+  private readonly matieres = inject(MatiereService);
 
-  protected readonly subjects = computed(() => this.store.subjects().filter((s) => !s.archived));
+  protected readonly subjects = computed(() => this.matieres.subjects());
   protected readonly streak = computed(() => this.stats.streak());
+  protected readonly matiere = computed(() => this.matieres.active());
 
   protected mastery(id: string) {
     return this.stats.mastery(id);

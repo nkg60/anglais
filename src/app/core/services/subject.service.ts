@@ -20,7 +20,7 @@ export class SubjectService {
     return this.store.subjects().find((s) => s.id === id);
   }
 
-  create(data: Pick<Subject, 'name' | 'description' | 'color' | 'icon'>): string {
+  create(data: Pick<Subject, 'matiereId' | 'name' | 'description' | 'color' | 'icon'>): string {
     const subject: Subject = {
       id: uid(),
       ...data,
@@ -46,6 +46,7 @@ export class SubjectService {
     this.store.mutate((d) => {
       const cardIds = new Set(d.flashcards.filter((c) => c.subjectId === id).map((c) => c.id));
       return {
+        matieres: d.matieres,
         subjects: d.subjects.filter((s) => s.id !== id),
         notes: d.notes.filter((n) => n.subjectId !== id),
         primings: d.primings.filter((p) => p.subjectId !== id),

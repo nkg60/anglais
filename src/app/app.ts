@@ -1,6 +1,9 @@
-import { Component, HostListener, inject, signal, viewChild } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, HostListener, computed, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { SwUpdate } from '@angular/service-worker';
+import { MatiereService } from './core/services/matiere.service';
 import { StoreService } from './core/services/store.service';
 import { QuickAdd } from './features/quick-add/quick-add';
 
@@ -20,6 +23,14 @@ interface NavItem {
           <span class="brand-mark">P</span>
           <span class="brand-text">PERRIO</span>
         </a>
+
+        @if (matiere(); as m) {
+          <a routerLink="/matieres" class="matiere" title="Changer de matière">
+            <span>{{ m.icon }}</span>
+            <span class="matiere-nom">{{ m.name }}</span>
+            <span class="chevron">⌄</span>
+          </a>
+        }
         <nav class="desktop-nav">
           @for (item of nav; track item.path) {
             <a
@@ -78,7 +89,8 @@ interface NavItem {
       }
     </main>
 
-    @if (store.loaded()) {
+    <!-- Ajouter une carte n'a pas de sens sur l'écran de choix de la matière. -->
+    @if (store.loaded() && matiere() && !surEcranMatieres()) {
       <app-quick-add />
     }
 
@@ -99,9 +111,22 @@ interface NavItem {
 })
 export class App {
   protected readonly store = inject(StoreService);
+  private readonly matieres = inject(MatiereService);
+  protected readonly matiere = computed(() => this.matieres.active());
   private readonly swUpdate = inject(SwUpdate);
   protected readonly updateAvailable = signal(false);
   private readonly quickAdd = viewChild(QuickAdd);
+  private readonly router = inject(Router);
+
+  private readonly url = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  protected readonly surEcranMatieres = computed(() => this.url().startsWith('/matieres'));
 
   protected readonly nav: NavItem[] = [
     { path: '/', label: 'Accueil', icon: '🏠' },

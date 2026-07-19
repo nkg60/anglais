@@ -17,7 +17,7 @@ Pour découvrir l'application elle-même, voir [GUIDE.md](GUIDE.md).
 ## 1. Où sont stockées les données
 
 Côté **serveur**, dans **Netlify Blobs** : un unique document JSON, sous la clé `dataset` du store
-`perrio`, contenant les six collections. Les données suivent donc tous vos appareils, et vider le
+`perrio`, contenant les sept collections. Les données suivent donc tous vos appareils, et vider le
 cache du navigateur ne détruit plus rien.
 
 > ### ⚠️ L'espace est partagé et sans authentification
@@ -30,7 +30,7 @@ cache du navigateur ne détruit plus rien.
 
 ### Le cycle de vie d'une modification
 
-1. Au démarrage, `StoreService.init()` fait un `GET /api/data` et place les six collections dans
+1. Au démarrage, `StoreService.init()` fait un `GET /api/data` et place les sept collections dans
    des signals Angular. Si l'espace est vide, le client y dépose le jeu de démonstration.
 2. Les écrans lisent ces signals de façon **synchrone** — l'interface ne montre jamais de spinner
    entre deux clics.
@@ -95,7 +95,7 @@ les deux.
 
 Écran **Données** → *Télécharger la sauvegarde*.
 
-Le fichier produit s'appelle `perrio-AAAA-MM-JJ.json` et contient l'intégralité des six collections,
+Le fichier produit s'appelle `perrio-AAAA-MM-JJ.json` et contient l'intégralité des sept collections,
 sans filtrage ni compression. Il est lisible et modifiable à la main.
 
 Les données vivant désormais côté serveur, l'export n'est plus l'unique filet de sécurité : il sert
@@ -138,7 +138,7 @@ fonction `mergeDatasets`, pour qu'il n'existe qu'une seule définition de « fus
 
 ### Mode « Remplacer »
 
-Les six collections sont vidées puis réécrites à l'identique. À réserver à la restauration d'un état
+Les sept collections sont vidées puis réécrites à l'identique. À réserver à la restauration d'un état
 exact — tout ce qui existait et qui n'est pas dans le fichier est perdu, **pour tous les appareils**
 puisque l'espace est commun.
 
@@ -183,13 +183,44 @@ Conventions communes à toutes les collections :
 
 ---
 
-## 6. Les six collections
+## 6. Les sept collections
+
+### `matieres` — les domaines d'étude
+
+Le niveau le plus haut : Anglais, Droit, Anatomie… Une matière regroupe des sujets et sert de
+périmètre à toute l'application.
+
+```json
+{
+  "id": "matiere-anglais",
+  "name": "Anglais",
+  "description": "Vocabulaire, grammaire et expressions de l’anglais.",
+  "color": "#4f7cff",
+  "icon": "🇬🇧",
+  "createdAt": "2026-07-18T20:00:00.000Z",
+  "updatedAt": "2026-07-18T20:00:00.000Z",
+  "archived": false
+}
+```
+
+L'identifiant `matiere-anglais` est **fixe et non aléatoire** : c'est celui de la matière créée lors
+de la migration des données antérieures (voir § 9). Deux appareils qui migrent chacun de leur côté,
+ou une vieille sauvegarde réimportée dans un espace déjà migré, convergent ainsi vers la même
+matière au lieu d'en créer deux exemplaires.
+
+Supprimer une matière efface **toute sa descendance** : sujets, notes, amorçages, cartes et
+révisions.
+
+La matière consultée n'est pas stockée ici : c'est une préférence d'affichage propre à l'appareil,
+conservée dans le `localStorage` sous la clé `perrio.matiere-active`. Deux personnes peuvent donc
+réviser deux matières différentes en même temps sur le même espace.
 
 ### `subjects` — les sujets d'étude
 
 ```json
 {
   "id": "8f2c…",
+  "matiereId": "matiere-anglais",
   "name": "Phrasal verbs",
   "description": "Les verbes à particule les plus courants.",
   "color": "#4f7cff",
@@ -200,8 +231,9 @@ Conventions communes à toutes les collections :
 }
 ```
 
-`color` alimente les barres de progression et les accents visuels ; `archived` masque le sujet des
-listes sans le supprimer.
+`matiereId` rattache le sujet à sa matière — c'est ce champ qui détermine sa visibilité. `color`
+alimente les barres de progression et les accents visuels ; `archived` masque le sujet des listes
+sans le supprimer.
 
 Supprimer un sujet déclenche une **cascade applicative** : ses flashcards, notes, amorçages et
 révisions sont effacés dans la même opération (`SubjectService.remove`), puis l'ensemble part au
@@ -371,7 +403,7 @@ Le fichier étant du JSON simple, il est possible d'y injecter des cartes géné
 4. Une carte neuve se déclare avec `ease: 2.5`, `interval: 0`, `repetitions: 0`, `lapses: 0`,
    `totalReviews: 0`, `correctReviews: 0`, `lastReviewedAt: null`, `suspended: false` et une
    `dueDate` à maintenant ou dans le passé pour qu'elle soit immédiatement proposée
-5. Les six collections peuvent être omises : une collection absente est traitée comme vide
+5. Les sept collections peuvent être omises : une collection absente est traitée comme vide
    (`normalizeDataset`), ce qui permet d'importer un fichier ne contenant que des sujets et des
    cartes
 
@@ -384,7 +416,11 @@ quel. Trois points d'attention :
 
 - **Champ ajouté** : les documents déjà en place ne l'auront pas. Prévoyez une valeur par défaut à
   la lecture (`normalizeDataset` dans `dataset.ts` est l'endroit prévu pour ça) plutôt que de
-  supposer sa présence.
+  supposer sa présence. C'est ainsi qu'a été introduit `matiereId` : `normalizeDataset` détecte les
+  sujets qui en sont dépourvus, crée la matière « Anglais » d'identifiant fixe et les y rattache.
+  `DataApiService` signale au passage que le document a été migré, et le store le réenregistre
+  aussitôt pour que la migration atteigne le serveur au lieu d'être recalculée à chaque
+  chargement.
 - **Champ renommé ou supprimé** : écrivez une conversion dans `normalizeDataset`, appliquée à
   chaque chargement. Elle se propagera au serveur au premier enregistrement suivant.
 - **Fichier de sauvegarde** : incrémentez `version` dans `BackupService` et faites accepter à
@@ -427,7 +463,7 @@ curl -s -X PUT localhost:8888/api/data -H 'content-type: application/json' \
   -d "{\"token\": $TOKEN, \"data\": $(jq -c '{subjects, primings, notes, flashcards, reviews, sessions}' perrio-2026-07-19.json)}"
 ```
 
-Le `data` d'un `PUT` attend les six collections **sans** l'enveloppe `format` / `version` /
+Le `data` d'un `PUT` attend les sept collections **sans** l'enveloppe `format` / `version` /
 `exportedAt` du fichier de sauvegarde : d'où le `jq` qui ne retient que les collections.
 
 Un `PUT` dont le `token` ne correspond plus renvoie **409**, accompagné de l'état distant à jour :

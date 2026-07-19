@@ -1,9 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { SUBJECT_COLORS, SubjectService } from '../../core/services/subject.service';
+import { MatiereService } from '../../core/services/matiere.service';
 import { StatsService } from '../../core/services/stats.service';
-import { StoreService } from '../../core/services/store.service';
+import { SUBJECT_COLORS, SubjectService } from '../../core/services/subject.service';
 
 const ICONS = ['📘', '🗣️', '⏳', '✍️', '🎧', '🧠', '🌍', '⚙️'];
 
@@ -162,7 +162,7 @@ const ICONS = ['📘', '🗣️', '⏳', '✍️', '🎧', '🧠', '🌍', '⚙�
   `,
 })
 export class SubjectList {
-  private readonly store = inject(StoreService);
+  private readonly matieres = inject(MatiereService);
   private readonly subjectService = inject(SubjectService);
   private readonly router = inject(Router);
   protected readonly stats = inject(StatsService);
@@ -170,7 +170,7 @@ export class SubjectList {
   protected readonly icons = ICONS;
   protected readonly colors = SUBJECT_COLORS;
 
-  protected readonly subjects = computed(() => this.store.subjects().filter((s) => !s.archived));
+  protected readonly subjects = computed(() => this.matieres.subjects());
   protected readonly showForm = signal(false);
   protected readonly name = signal('');
   protected readonly description = signal('');
@@ -188,7 +188,10 @@ export class SubjectList {
   protected async save(): Promise<void> {
     const name = this.name().trim();
     if (!name) return;
-    const id = await this.subjectService.create({
+    const matiereId = this.matieres.activeId();
+    if (!matiereId) return;
+    const id = this.subjectService.create({
+      matiereId,
       name,
       description: this.description().trim(),
       icon: this.icon(),

@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { MatiereService } from '../../core/services/matiere.service';
 import { StatsService } from '../../core/services/stats.service';
-import { StoreService } from '../../core/services/store.service';
 
 const CHART_W = 300;
 const CHART_H = 100;
@@ -28,7 +28,7 @@ const CHART_H = 100;
           <span class="kpi-label">meilleure série</span>
         </div>
         <div class="card kpi">
-          <span class="kpi-value">{{ totalReviews() }}</span>
+          <span class="kpi-value">{{ stats.totalReviews() }}</span>
           <span class="kpi-label">révisions au total</span>
         </div>
         <div class="card kpi">
@@ -40,7 +40,7 @@ const CHART_H = 100;
       <!-- Courbe de rétention -->
       <section class="card">
         <div class="section-title">Taux de réussite — 30 derniers jours</div>
-        @if (totalReviews() > 0) {
+        @if (stats.totalReviews() > 0) {
           <svg [attr.viewBox]="'0 0 ' + width + ' ' + height" class="chart" preserveAspectRatio="none">
             @for (y of [25, 50, 75]; track y) {
               <line
@@ -263,14 +263,14 @@ const CHART_H = 100;
 })
 export class StatsPage {
   protected readonly stats = inject(StatsService);
-  private readonly store = inject(StoreService);
+  private readonly matieres = inject(MatiereService);
 
   protected readonly width = CHART_W;
   protected readonly height = CHART_H;
 
-  protected readonly subjects = computed(() => this.store.subjects().filter((s) => !s.archived));
+  protected readonly subjects = computed(() => this.matieres.subjects());
   protected readonly streak = computed(() => this.stats.streak());
-  protected readonly totalReviews = computed(() => this.store.reviews().length);
+
   protected readonly curve = computed(() => this.stats.retentionCurve(30));
   protected readonly weekly = computed(() => this.stats.weeklyActivity(8));
   protected readonly distribution = computed(() => this.stats.cardDistribution());

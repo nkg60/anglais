@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { DEFAULT_EASE } from '../algorithms/sm2';
 import { nowIso, uid } from '../data/dataset';
 import { Flashcard } from '../models';
+import { MatiereService } from './matiere.service';
 import { StoreService } from './store.service';
 
 export interface FlashcardInput {
@@ -14,6 +15,7 @@ export interface FlashcardInput {
 @Injectable({ providedIn: 'root' })
 export class FlashcardService {
   private readonly store = inject(StoreService);
+  private readonly matieres = inject(MatiereService);
 
   bySubject(subjectId: string): Flashcard[] {
     return this.store
@@ -22,15 +24,21 @@ export class FlashcardService {
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
-  /** Cartes dues maintenant ou plus tôt, hors cartes suspendues. */
+  /**
+   * Cartes dues maintenant ou plus tôt, hors cartes suspendues.
+   *
+   * Sans liste explicite, le périmètre est celui de la matière active : le
+   * tableau de bord ne doit jamais annoncer des cartes d'une autre matière.
+   */
   due(subjectIds?: string[]): Flashcard[] {
     const limit = new Date();
     limit.setHours(23, 59, 59, 999);
     const iso = limit.toISOString();
+    const perimetre = subjectIds ?? this.matieres.subjectIds();
     return this.store
       .flashcards()
       .filter((c) => !c.suspended && c.dueDate <= iso)
-      .filter((c) => !subjectIds || subjectIds.includes(c.subjectId));
+      .filter((c) => perimetre.includes(c.subjectId));
   }
 
   tagsFor(subjectId: string): string[] {

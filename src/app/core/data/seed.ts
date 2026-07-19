@@ -1,6 +1,6 @@
 import { DEFAULT_EASE } from '../algorithms/sm2';
-import { Flashcard, Note, Subject } from '../models';
-import { Dataset, emptyDataset, nowIso, uid } from './dataset';
+import { Flashcard, Matiere, Note, Subject } from '../models';
+import { Dataset, MATIERE_PAR_DEFAUT, emptyDataset, nowIso, uid } from './dataset';
 
 interface SeedCard {
   front: string;
@@ -54,8 +54,20 @@ const TENSES: SeedCard[] = [
 
 /** Jeu de démonstration inséré quand l'espace serveur est encore vide. */
 export function buildSeed(): Dataset {
+  const anglais: Matiere = {
+    id: MATIERE_PAR_DEFAUT,
+    name: 'Anglais',
+    description: 'Vocabulaire, grammaire et expressions de l’anglais.',
+    color: '#4f7cff',
+    icon: '🇬🇧',
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+    archived: false,
+  };
+
   const phrasal: Subject = {
     id: uid(),
+    matiereId: anglais.id,
     name: 'Phrasal verbs',
     description: 'Les verbes à particule les plus courants de l’anglais quotidien.',
     color: '#4f7cff',
@@ -67,6 +79,7 @@ export function buildSeed(): Dataset {
 
   const tenses: Subject = {
     id: uid(),
+    matiereId: anglais.id,
     name: 'Temps verbaux',
     description: 'Choisir le bon temps : present perfect, prétérit, futur, conditionnel.',
     color: '#16a37f',
@@ -104,6 +117,7 @@ export function buildSeed(): Dataset {
 
   return {
     ...emptyDataset(),
+    matieres: [anglais],
     subjects: [phrasal, tenses],
     notes: [note],
     flashcards: [

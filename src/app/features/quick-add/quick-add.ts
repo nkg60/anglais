@@ -1,8 +1,8 @@
 import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FlashcardService } from '../../core/services/flashcard.service';
+import { MatiereService } from '../../core/services/matiere.service';
 import { ReviewService } from '../../core/services/review.service';
-import { StoreService } from '../../core/services/store.service';
 import { SUBJECT_COLORS, SubjectService } from '../../core/services/subject.service';
 
 /** Valeur de la liste déroulante déclenchant la saisie d'un nouveau sujet. */
@@ -205,9 +205,9 @@ const NOUVEAU = '::nouveau::';
   `,
 })
 export class QuickAdd {
-  private readonly store = inject(StoreService);
   private readonly flashcards = inject(FlashcardService);
   private readonly subjectService = inject(SubjectService);
+  private readonly matieres = inject(MatiereService);
   protected readonly review = inject(ReviewService);
 
   private readonly frontField = viewChild<ElementRef<HTMLTextAreaElement>>('front');
@@ -222,9 +222,7 @@ export class QuickAdd {
   protected readonly tagsText = signal('');
   protected readonly added = signal(0);
 
-  protected readonly subjects = computed(() =>
-    this.store.subjects().filter((s) => !s.archived),
-  );
+  protected readonly subjects = computed(() => this.matieres.subjects());
 
   protected readonly creatingSubject = computed(() => this.subjectId() === NOUVEAU);
 
@@ -270,11 +268,14 @@ export class QuickAdd {
 
     let cible = this.subjectId();
     if (this.creatingSubject()) {
+      const matiereId = this.matieres.activeId();
+      if (!matiereId) return;
       cible = this.subjectService.create({
+        matiereId,
         name: this.newSubjectName().trim(),
         description: '',
         icon: '📘',
-        color: SUBJECT_COLORS[this.store.subjects().length % SUBJECT_COLORS.length],
+        color: SUBJECT_COLORS[this.subjects().length % SUBJECT_COLORS.length],
       });
       // Les cartes suivantes iront dans ce sujet sans le recréer.
       this.subjectId.set(cible);

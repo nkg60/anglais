@@ -36,6 +36,37 @@
   font-size: 0.95rem;
 }
 
+.matiere {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 42vw;
+  overflow: hidden;
+}
+
+.matiere:hover {
+  border-color: var(--primary);
+}
+
+.matiere-nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
 .desktop-nav {
   display: none;
   gap: 4px;

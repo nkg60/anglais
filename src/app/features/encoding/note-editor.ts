@@ -2,8 +2,8 @@ import { Component, computed, effect, inject, input, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Analogy, Connection } from '../../core/models';
+import { MatiereService } from '../../core/services/matiere.service';
 import { NoteService } from '../../core/services/note.service';
-import { StoreService } from '../../core/services/store.service';
 import { SubjectService } from '../../core/services/subject.service';
 
 /** Un regroupement en cours d'édition : les éléments se saisissent ligne par ligne. */
@@ -224,7 +224,7 @@ export class NoteEditor {
 
   private readonly notes = inject(NoteService);
   private readonly subjects = inject(SubjectService);
-  private readonly store = inject(StoreService);
+  private readonly matieres = inject(MatiereService);
   private readonly router = inject(Router);
 
   protected readonly title = signal('');
@@ -238,7 +238,7 @@ export class NoteEditor {
   private readonly loaded = signal(false);
 
   protected readonly otherSubjects = computed(() =>
-    this.store.subjects().filter((s) => s.id !== this.id()),
+    this.matieres.subjects().filter((s) => s.id !== this.id()),
   );
 
   constructor() {

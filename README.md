@@ -3,6 +3,9 @@
 Application web d'apprentissage par flashcards et répétition espacée, structurée autour du système
 PERRIO — un cadre de méta-apprentissage en 6 phases.
 
+Le contenu s'organise en **matières** (Anglais, Droit…) → **sujets** → **cartes**. On choisit sa
+matière en arrivant, et chacune reste étanche : sujets, statistiques et séries lui appartiennent.
+
 > Information → **Amorçage** → **Encodage** → Mémoire, avec une boucle de **récupération** qui
 > renforce la trace à chaque passage. Ce qui n'est ni encodé ni récupéré finit oublié.
 
@@ -53,8 +56,9 @@ npm run dev        # http://localhost:8888 — Angular + /api/data
 `npm start` lance Angular seul (port 4200) : l'interface se charge mais toute écriture échoue,
 faute d'API. À réserver au travail purement visuel.
 
-Au premier lancement, l'espace serveur est vide : le client y dépose deux sujets d'exemple —
-**Phrasal verbs** (8 cartes, une note d'encodage complète) et **Temps verbaux** (7 cartes).
+Au premier lancement, l'espace serveur est vide : le client y dépose une matière **Anglais**
+contenant deux sujets d'exemple — **Phrasal verbs** (8 cartes, une note d'encodage complète) et
+**Temps verbaux** (7 cartes).
 
 ## Déployer sur Netlify
 
@@ -134,6 +138,7 @@ src/app/
 │   ├── models/       types partagés
 │   └── services/     store, sujets, cartes, notes, amorçages, révision, stats, sauvegarde
 └── features/
+    ├── matieres/     choix et création des matières
     ├── dashboard/    révisions dues, série, maîtrise globale
     ├── subjects/     liste et pipeline PERRIO en 6 étapes
     ├── priming/      checklist d'amorçage

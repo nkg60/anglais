@@ -3,8 +3,8 @@ import { RouterLink } from '@angular/router';
 import { previewInterval } from '../../core/algorithms/sm2';
 import { Rating, SessionMode } from '../../core/models';
 import { FlashcardService } from '../../core/services/flashcard.service';
+import { MatiereService } from '../../core/services/matiere.service';
 import { ReviewService } from '../../core/services/review.service';
-import { StoreService } from '../../core/services/store.service';
 import { SubjectService } from '../../core/services/subject.service';
 
 @Component({
@@ -331,11 +331,11 @@ export class ReviewPage {
   readonly mode_ = input<SessionMode | undefined>(undefined, { alias: 'mode' });
 
   protected readonly review = inject(ReviewService);
-  private readonly store = inject(StoreService);
+  private readonly matieres = inject(MatiereService);
   private readonly subjectService = inject(SubjectService);
   private readonly flashcards = inject(FlashcardService);
 
-  protected readonly subjects = computed(() => this.store.subjects().filter((s) => !s.archived));
+  protected readonly subjects = computed(() => this.matieres.subjects());
   protected readonly mode = signal<SessionMode>('retrieval');
   protected readonly selected = signal<Set<string>>(new Set());
   protected readonly justFinished = signal(false);

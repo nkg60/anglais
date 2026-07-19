@@ -4,6 +4,7 @@ import { MasteryBreakdown, computeMastery } from '../algorithms/mastery';
 import { computeStreak } from '../algorithms/streak';
 import { PERRIO_PHASES, PhaseStatus } from '../models';
 import { FlashcardService } from './flashcard.service';
+import { MatiereService } from './matiere.service';
 import { NoteService } from './note.service';
 import { PrimingService } from './priming.service';
 import { StoreService } from './store.service';
@@ -31,12 +32,33 @@ export class StatsService {
   private readonly flashcards = inject(FlashcardService);
   private readonly notes = inject(NoteService);
   private readonly primings = inject(PrimingService);
+  private readonly matieres = inject(MatiereService);
 
-  readonly streak = computed(() => computeStreak(this.store.sessions()));
+  /** Périmètre courant : les sujets de la matière active. */
+  private readonly perimetre = computed(() => new Set(this.matieres.subjectIds()));
+
+  /** Cartes de la matière active. */
+  private readonly cartes = computed(() =>
+    this.store.flashcards().filter((c) => this.perimetre().has(c.subjectId)),
+  );
+
+  /** Révisions de la matière active. */
+  private readonly revisions = computed(() =>
+    this.store.reviews().filter((r) => this.perimetre().has(r.subjectId)),
+  );
+
+  /** Sessions ayant porté sur au moins un sujet de la matière active. */
+  private readonly seances = computed(() =>
+    this.store.sessions().filter((s) => s.subjectIds.some((id) => this.perimetre().has(id))),
+  );
+
+  readonly streak = computed(() => computeStreak(this.seances()));
 
   readonly dueToday = computed(() => this.flashcards.due().length);
 
-  readonly totalCards = computed(() => this.store.flashcards().length);
+  readonly totalCards = computed(() => this.cartes().length);
+
+  readonly totalReviews = computed(() => this.revisions().length);
 
   mastery(subjectId: string): MasteryBreakdown {
     return computeMastery(
@@ -47,7 +69,7 @@ export class StatsService {
   }
 
   globalMastery(): MasteryBreakdown {
-    return computeMastery(this.store.flashcards(), this.store.reviews(), this.store.sessions());
+    return computeMastery(this.cartes(), this.revisions(), this.seances());
   }
 
   dueCount(subjectId: string): number {
@@ -107,9 +129,9 @@ export class StatsService {
     for (let i = days - 1; i >= 0; i--) {
       const date = addDays(new Date(), -i);
       const key = todayKey(date);
-      const dayReviews = this.store
-        .reviews()
-        .filter((r) => todayKey(new Date(r.reviewedAt)) === key);
+      const dayReviews = this.revisions().filter(
+        (r) => todayKey(new Date(r.reviewedAt)) === key,
+      );
       const correct = dayReviews.filter((r) => r.rating !== 'again').length;
       points.push({
         day: key,
@@ -128,7 +150,7 @@ export class StatsService {
     for (let i = weeks - 1; i >= 0; i--) {
       const end = addDays(new Date(), -i * 7);
       const start = addDays(end, -6);
-      const inRange = this.store.sessions().filter((s) => {
+      const inRange = this.seances().filter((s) => {
         const d = new Date(s.startedAt);
         return daysBetween(d, start) >= 0 && daysBetween(end, d) >= 0;
       });
@@ -143,7 +165,7 @@ export class StatsService {
 
   /** Répartition des cartes par état d'ancrage mémoriel. */
   cardDistribution() {
-    const cards = this.store.flashcards();
+    const cards = this.cartes();
     return {
       nouvelles: cards.filter((c) => c.repetitions === 0).length,
       apprentissage: cards.filter((c) => c.repetitions > 0 && c.interval < 21).length,

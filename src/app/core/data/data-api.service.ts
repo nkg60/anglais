@@ -9,6 +9,8 @@ export interface RemoteDocument {
   token: string | null;
   updatedAt: string | null;
   data: Dataset | null;
+  /** Vrai si le document stocké a dû être migré à la lecture (schéma antérieur). */
+  migrated?: boolean;
 }
 
 /** Levée quand le serveur a une version plus récente que celle qu'on croyait avoir. */
@@ -20,11 +22,14 @@ export class ConflictError extends Error {
 }
 
 function toDocument(body: Partial<RemoteDocument>): RemoteDocument {
+  const brut = body.data as Partial<Dataset> | null | undefined;
   return {
     revision: body.revision ?? 0,
     token: body.token ?? null,
     updatedAt: body.updatedAt ?? null,
-    data: body.data ? normalizeDataset(body.data) : null,
+    data: brut ? normalizeDataset(brut) : null,
+    // Signalé au store, qui réenregistre pour que la migration atteigne le serveur.
+    migrated: !!brut?.subjects?.some((s) => !s.matiereId),
   };
 }
 
