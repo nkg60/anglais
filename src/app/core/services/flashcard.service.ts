@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { DEFAULT_EASE } from '../algorithms/sm2';
-import { db, nowIso, uid } from '../db/db';
+import { nowIso, uid } from '../data/dataset';
 import { Flashcard } from '../models';
 import { StoreService } from './store.service';
 
@@ -24,12 +24,12 @@ export class FlashcardService {
 
   /** Cartes dues maintenant ou plus tôt, hors cartes suspendues. */
   due(subjectIds?: string[]): Flashcard[] {
-    const now = new Date();
-    now.setHours(23, 59, 59, 999);
-    const limit = now.toISOString();
+    const limit = new Date();
+    limit.setHours(23, 59, 59, 999);
+    const iso = limit.toISOString();
     return this.store
       .flashcards()
-      .filter((c) => !c.suspended && c.dueDate <= limit)
+      .filter((c) => !c.suspended && c.dueDate <= iso)
       .filter((c) => !subjectIds || subjectIds.includes(c.subjectId));
   }
 
@@ -39,7 +39,7 @@ export class FlashcardService {
     return [...tags].sort();
   }
 
-  async create(input: FlashcardInput): Promise<void> {
+  create(input: FlashcardInput): void {
     const card: Flashcard = {
       id: uid(),
       ...input,
@@ -55,27 +55,29 @@ export class FlashcardService {
       updatedAt: nowIso(),
       suspended: false,
     };
-    await db.flashcards.add(card);
-    await this.store.refreshFlashcards();
+    this.store.mutate((d) => ({ ...d, flashcards: [...d.flashcards, card] }));
   }
 
-  async update(id: string, changes: Partial<Flashcard>): Promise<void> {
-    await db.flashcards.update(id, { ...changes, updatedAt: nowIso() });
-    await this.store.refreshFlashcards();
+  update(id: string, changes: Partial<Flashcard>): void {
+    this.store.mutate((d) => ({
+      ...d,
+      flashcards: d.flashcards.map((c) =>
+        c.id === id ? { ...c, ...changes, updatedAt: nowIso() } : c,
+      ),
+    }));
   }
 
-  async remove(id: string): Promise<void> {
-    await db.transaction('rw', db.flashcards, db.reviews, async () => {
-      await db.reviews.where('cardId').equals(id).delete();
-      await db.flashcards.delete(id);
-    });
-    await this.store.refreshFlashcards();
-    await this.store.refreshReviews();
+  remove(id: string): void {
+    this.store.mutate((d) => ({
+      ...d,
+      flashcards: d.flashcards.filter((c) => c.id !== id),
+      reviews: d.reviews.filter((r) => r.cardId !== id),
+    }));
   }
 
   /** Remet une carte à zéro : elle repart du début du cycle de répétition. */
-  async reset(id: string): Promise<void> {
-    await this.update(id, {
+  reset(id: string): void {
+    this.update(id, {
       ease: DEFAULT_EASE,
       interval: 0,
       repetitions: 0,

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { db, nowIso, uid } from '../db/db';
+import { nowIso, uid } from '../data/dataset';
 import { Priming } from '../models';
 import { StoreService } from './store.service';
 
@@ -18,17 +18,15 @@ export class PrimingService {
     return this.bySubject(subjectId)[0];
   }
 
-  async create(
+  create(
     subjectId: string,
     data: Pick<Priming, 'whatIKnow' | 'whatIWantToLearn' | 'whyItMatters'>,
-  ): Promise<void> {
+  ): void {
     const priming: Priming = { id: uid(), subjectId, ...data, createdAt: nowIso() };
-    await db.primings.add(priming);
-    await this.store.refreshPrimings();
+    this.store.mutate((d) => ({ ...d, primings: [...d.primings, priming] }));
   }
 
-  async remove(id: string): Promise<void> {
-    await db.primings.delete(id);
-    await this.store.refreshPrimings();
+  remove(id: string): void {
+    this.store.mutate((d) => ({ ...d, primings: d.primings.filter((p) => p.id !== id) }));
   }
 }

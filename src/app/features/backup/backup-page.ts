@@ -9,13 +9,22 @@ import { StoreService } from '../../core/services/store.service';
       <div>
         <h1>💾 Mes données</h1>
         <p class="muted">
-          Tout est stocké dans ce navigateur, sur cet appareil. Rien n’est envoyé sur un serveur —
-          exportez régulièrement pour ne rien perdre.
+          Vos données sont enregistrées côté serveur (Netlify Blobs) et suivent donc tous vos
+          appareils.
+        </p>
+      </div>
+
+      <div class="card warning">
+        <strong>⚠️ Espace partagé, sans compte</strong>
+        <p class="muted small">
+          Cette application n’a pas d’authentification : il existe un seul jeu de données pour tout
+          le site. <strong>Toute personne connaissant l’adresse peut consulter et modifier vos
+          cartes.</strong> Gardez l’URL privée, ou demandez l’ajout d’une clé de synchronisation.
         </p>
       </div>
 
       <div class="card">
-        <div class="section-title">Contenu local</div>
+        <div class="section-title">Contenu de l’espace</div>
         <div class="counts">
           <span class="badge">{{ store.subjects().length }} sujets</span>
           <span class="badge">{{ store.flashcards().length }} cartes</span>
@@ -29,7 +38,8 @@ import { StoreService } from '../../core/services/store.service';
       <div class="card">
         <div class="section-title">Exporter</div>
         <p class="muted small">
-          Télécharge un fichier JSON contenant l’intégralité de vos données.
+          Télécharge un fichier JSON contenant l’intégralité de l’espace. Utile pour archiver un
+          état avant une manipulation risquée.
         </p>
         <button class="btn btn-primary" (click)="exportData()">Télécharger la sauvegarde</button>
       </div>
@@ -82,7 +92,8 @@ import { StoreService } from '../../core/services/store.service';
       <div class="card">
         <div class="section-title">Réinitialiser</div>
         <p class="muted small">
-          Efface toute la base locale et recharge les deux sujets d’exemple.
+          Efface l’espace <strong>sur le serveur</strong> — donc pour tous les appareils — et
+          recharge les deux sujets d’exemple.
         </p>
         <button class="btn btn-danger" (click)="reset()">Tout effacer</button>
       </div>
@@ -128,6 +139,14 @@ import { StoreService } from '../../core/services/store.service';
       display: block;
     }
 
+    .warning {
+      border-left: 3px solid var(--warn);
+    }
+
+    .warning p {
+      margin: 4px 0 0;
+    }
+
     .report {
       display: flex;
       flex-wrap: wrap;
@@ -149,8 +168,8 @@ export class BackupPage {
   protected readonly mode = signal<ImportMode>('merge');
   protected readonly report = signal<ImportReport | null>(null);
 
-  protected async exportData(): Promise<void> {
-    await this.backup.export();
+  protected exportData(): void {
+    this.backup.export();
   }
 
   protected async importData(event: Event): Promise<void> {

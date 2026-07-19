@@ -59,6 +59,62 @@
   color: var(--primary);
 }
 
+.spacer {
+  flex: 1;
+}
+
+.sync {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.sync .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.sync-synchronisé .dot {
+  background: var(--success);
+}
+
+.sync-enregistrement .dot {
+  background: var(--warn);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.sync-erreur {
+  color: var(--danger);
+}
+
+.sync-erreur .dot {
+  background: var(--danger);
+}
+
+.sync-text {
+  display: none;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.offline {
+  border-left: 3px solid var(--danger);
+  margin-bottom: var(--space);
+}
+
+.offline p {
+  margin: 4px 0 12px;
+}
+
 .page {
   max-width: var(--max-width);
   margin: 0 auto;
@@ -102,6 +158,10 @@
 @media (min-width: 720px) {
   .desktop-nav {
     display: flex;
+  }
+
+  .sync-text {
+    display: inline;
   }
 
   .mobile-nav {

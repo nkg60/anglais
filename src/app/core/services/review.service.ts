@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { applySm2 } from '../algorithms/sm2';
-import { db, nowIso, uid } from '../db/db';
+import { nowIso, uid } from '../data/dataset';
 import { Flashcard, Rating, Review, SessionMode, StudySession } from '../models';
 import { FlashcardService } from './flashcard.service';
 import { StoreService } from './store.service';
@@ -75,7 +75,7 @@ export class ReviewService {
   });
 
   /** Démarre une session. Renvoie false si aucune carte n'est due. */
-  async start(mode: SessionMode, subjectIds: string[]): Promise<boolean> {
+  start(mode: SessionMode, subjectIds: string[]): boolean {
     const due = this.flashcards.due(subjectIds.length ? subjectIds : undefined);
     if (!due.length) return false;
 
@@ -89,8 +89,7 @@ export class ReviewService {
       cardsReviewed: 0,
       correctCount: 0,
     };
-    await db.sessions.add(session);
-    await this.store.refreshSessions();
+    this.store.mutate((d) => ({ ...d, sessions: [...d.sessions, session] }));
 
     this.sessionId.set(session.id);
     this.mode.set(mode);
@@ -108,7 +107,7 @@ export class ReviewService {
     this.revealed.set(true);
   }
 
-  async rate(rating: Rating): Promise<void> {
+  rate(rating: Rating): void {
     const card = this.currentCard();
     const sessionId = this.sessionId();
     if (!card || !sessionId) return;
@@ -126,39 +125,45 @@ export class ReviewService {
       easeAfter: result.ease,
     };
 
-    await db.transaction('rw', db.flashcards, db.reviews, db.sessions, async () => {
-      await db.flashcards.update(card.id, {
-        ease: result.ease,
-        interval: result.interval,
-        repetitions: result.repetitions,
-        dueDate: result.dueDate,
-        lapses: result.lapses,
-        lastReviewedAt: nowIso(),
-        totalReviews: card.totalReviews + 1,
-        correctReviews: card.correctReviews + (rating === 'again' ? 0 : 1),
-        updatedAt: nowIso(),
-      });
-      await db.reviews.add(review);
-      await db.sessions.update(sessionId, {
-        cardsReviewed: this.reviewedCount() + 1,
-        correctCount: this.correctCount() + (rating === 'again' ? 0 : 1),
-      });
-    });
+    const reviewed = this.reviewedCount() + 1;
+    const correct = this.correctCount() + (rating === 'again' ? 0 : 1);
 
-    this.reviewedCount.update((n) => n + 1);
+    this.store.mutate((d) => ({
+      ...d,
+      flashcards: d.flashcards.map((c) =>
+        c.id === card.id
+          ? {
+              ...c,
+              ease: result.ease,
+              interval: result.interval,
+              repetitions: result.repetitions,
+              dueDate: result.dueDate,
+              lapses: result.lapses,
+              lastReviewedAt: nowIso(),
+              totalReviews: c.totalReviews + 1,
+              correctReviews: c.correctReviews + (rating === 'again' ? 0 : 1),
+              updatedAt: nowIso(),
+            }
+          : c,
+      ),
+      reviews: [...d.reviews, review],
+      sessions: d.sessions.map((s) =>
+        s.id === sessionId ? { ...s, cardsReviewed: reviewed, correctCount: correct } : s,
+      ),
+    }));
+
+    this.reviewedCount.set(reviewed);
     if (rating === 'again') {
       this.againCount.update((n) => n + 1);
       // La carte ratée repasse en fin de file : elle doit être revue aujourd'hui.
       this.queue.update((q) => [...q.slice(1), card.id]);
     } else {
-      this.correctCount.update((n) => n + 1);
+      this.correctCount.set(correct);
       this.queue.update((q) => q.slice(1));
     }
     this.revealed.set(false);
 
-    await this.store.refreshFlashcards();
-    await this.store.refreshReviews();
-    if (!this.queue().length) await this.finish();
+    if (!this.queue().length) this.finish();
   }
 
   /** Repousse la carte courante sans la noter. */
@@ -167,11 +172,15 @@ export class ReviewService {
     this.revealed.set(false);
   }
 
-  async finish(): Promise<void> {
+  finish(): void {
     const sessionId = this.sessionId();
     if (sessionId) {
-      await db.sessions.update(sessionId, { endedAt: nowIso() });
-      await this.store.refreshSessions();
+      this.store.mutate((d) => ({
+        ...d,
+        sessions: d.sessions.map((s) => (s.id === sessionId ? { ...s, endedAt: nowIso() } : s)),
+      }));
+      // Fin de session : on n'attend pas le regroupement des écritures.
+      void this.store.flush();
     }
     this.queue.set([]);
     this.sessionId.set(null);

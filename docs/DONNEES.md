@@ -3,34 +3,77 @@
 Ce document décrit où vivent les données de PERRIO, le format exact du fichier de sauvegarde, et
 le rôle de chaque champ.
 
-- Code concerné : [`src/app/core/services/backup.service.ts`](../src/app/core/services/backup.service.ts)
-- Schéma de la base : [`src/app/core/db/db.ts`](../src/app/core/db/db.ts)
+- Fonction serveur : [`netlify/functions/data.mts`](../netlify/functions/data.mts)
+- Client HTTP : [`src/app/core/data/data-api.service.ts`](../src/app/core/data/data-api.service.ts)
+- Store et synchronisation : [`src/app/core/services/store.service.ts`](../src/app/core/services/store.service.ts)
+- Règles de fusion : [`src/app/core/data/merge.ts`](../src/app/core/data/merge.ts)
+- Export / import : [`src/app/core/services/backup.service.ts`](../src/app/core/services/backup.service.ts)
 - Types TypeScript : [`src/app/core/models/index.ts`](../src/app/core/models/index.ts)
 
 ---
 
 ## 1. Où sont stockées les données
 
-Tout est dans **IndexedDB**, la base de données intégrée au navigateur, sous le nom `perrio`.
-Dexie sert de couche d'accès. Il n'y a aucun serveur : rien ne quitte l'appareil.
+Côté **serveur**, dans **Netlify Blobs** : un unique document JSON, sous la clé `dataset` du store
+`perrio`, contenant les six collections. Les données suivent donc tous vos appareils, et vider le
+cache du navigateur ne détruit plus rien.
 
-Conséquences concrètes :
+> ### ⚠️ L'espace est partagé et sans authentification
+>
+> Il n'y a ni compte ni cloisonnement : **un seul jeu de données pour tout le site**. Toute personne
+> connaissant l'adresse Netlify peut lire, modifier et effacer vos cartes. Gardez l'URL privée.
+>
+> Pour lever cette limite, deux directions possibles : une clé de synchronisation secrète tirée au
+> premier lancement et servant de préfixe de clé blob, ou une véritable authentification.
 
-| Situation | Effet sur les données |
+### Le cycle de vie d'une modification
+
+1. Au démarrage, `StoreService.init()` fait un `GET /api/data` et place les six collections dans
+   des signals Angular. Si l'espace est vide, le client y dépose le jeu de démonstration.
+2. Les écrans lisent ces signals de façon **synchrone** — l'interface ne montre jamais de spinner
+   entre deux clics.
+3. Chaque modification passe par `store.mutate()`, qui applique le changement en mémoire puis
+   programme un enregistrement.
+4. Les enregistrements sont **regroupés sur 500 ms** : une session de révision génère beaucoup
+   d'écritures, on évite d'en faire une requête chacune.
+5. Un indicateur dans la barre supérieure affiche l'état : *chargement*, *enregistrement*,
+   *synchronisé* ou *erreur*.
+
+Conséquence à connaître : l'application **exige une connexion**. Hors ligne, la consultation reste
+possible tant que l'onglet est ouvert, mais les modifications ne partent pas et l'indicateur passe
+au rouge. Un bandeau propose alors de réessayer.
+
+Avant la fermeture de l'onglet, un `beforeunload` force l'envoi de ce qui n'est pas encore parti.
+
+---
+
+## 1 bis. L'API
+
+Une seule fonction Netlify, exposée sur `/api/data`.
+
+| Méthode | Effet |
 |---|---|
-| Vous changez de navigateur ou d'appareil | Vous repartez de zéro — les données ne suivent pas |
-| Vous videz le cache / les données de site | **Tout est effacé définitivement** |
-| Navigation privée | Les données disparaissent à la fermeture de la fenêtre |
-| Le site est réhébergé sur un autre domaine | IndexedDB est cloisonnée par origine : nouvelle base vide |
+| `GET` | Renvoie `{ revision, token, updatedAt, data }`. `data` vaut `null` si l'espace n'a jamais été écrit. |
+| `PUT` | Corps `{ token, data }`. Renvoie `{ revision, token, updatedAt }`, ou **409** si le jeton est périmé. |
+| `DELETE` | Vide l'espace. Le jeu de démonstration sera recréé au prochain chargement. |
 
-L'export JSON est donc le **seul** mécanisme de sauvegarde et de transfert.
+### Le jeton de version et les écritures concurrentes
 
-### Fonctionnement en mémoire
+Le `token` identifie la version sur laquelle se fonde une écriture. Le serveur refuse un `PUT` dont
+le jeton ne correspond plus à l'état stocké : sans ce garde-fou, deux onglets ouverts en parallèle
+écraseraient mutuellement leurs modifications.
 
-Au démarrage, `StoreService.init()` charge les six tables en mémoire dans des signals Angular.
-Les écrans lisent ces signals de façon synchrone ; les services écrivent d'abord dans IndexedDB,
-puis rafraîchissent le signal concerné. Les volumes visés (quelques milliers de lignes) tiennent
-sans difficulté en RAM.
+Le jeton dérive **uniquement du numéro de révision** embarqué dans le document, jamais de l'ETag du
+blob. C'est délibéré : l'ETag n'est pas exposé par toutes les implémentations du store — le serveur
+de développement local ne le renvoie qu'à l'écriture, jamais à la lecture. Mélanger les deux sources
+produit un jeton que la lecture suivante ne reconnaît plus, et donc un conflit à *chaque*
+enregistrement. Quand un ETag est disponible, il sert en complément à demander une écriture
+conditionnelle (`onlyIfMatch`), ce qui ferme la fenêtre entre la lecture et l'écriture.
+
+Côté client, un 409 n'est pas une erreur affichée à l'utilisateur : `StoreService` **fusionne**
+l'état distant avec le sien (mêmes règles qu'à l'import, voir § 3) puis réessaie sur la nouvelle
+version, jusqu'à cinq fois. Deux onglets qui créent chacun un sujet au même instant conservent donc
+les deux.
 
 ---
 
@@ -38,8 +81,11 @@ sans difficulté en RAM.
 
 Écran **Données** → *Télécharger la sauvegarde*.
 
-Le fichier produit s'appelle `perrio-AAAA-MM-JJ.json` et contient l'intégralité des six tables,
+Le fichier produit s'appelle `perrio-AAAA-MM-JJ.json` et contient l'intégralité des six collections,
 sans filtrage ni compression. Il est lisible et modifiable à la main.
+
+Les données vivant désormais côté serveur, l'export n'est plus l'unique filet de sécurité : il sert
+à archiver un état avant une manipulation risquée, ou à transporter un jeu de cartes ailleurs.
 
 ## 3. Importer
 
@@ -73,31 +119,28 @@ travail fait de part et d'autre, **à condition que les modifications portent su
 différentes** : si la même carte a été modifiée des deux côtés, la plus récente écrase l'autre
 sans fusion champ par champ ni avertissement.
 
+Ces mêmes règles servent à résoudre les conflits d'écriture entre onglets (§ 1 bis) : c'est la même
+fonction `mergeDatasets`, pour qu'il n'existe qu'une seule définition de « fusionner » dans le code.
+
 ### Mode « Remplacer »
 
-Les six tables sont vidées puis réécrites à l'identique. À réserver à la restauration d'un état
-exact — tout ce qui existait localement et qui n'est pas dans le fichier est perdu.
+Les six collections sont vidées puis réécrites à l'identique. À réserver à la restauration d'un état
+exact — tout ce qui existait et qui n'est pas dans le fichier est perdu, **pour tous les appareils**
+puisque l'espace est commun.
 
 ### Dans les deux cas
 
-L'opération s'exécute dans une transaction Dexie unique : en cas d'erreur en cours de route,
-IndexedDB annule l'ensemble et la base reste dans son état précédent.
+La fusion est calculée en mémoire, puis le résultat est envoyé au serveur en une seule écriture :
+soit elle aboutit, soit l'espace reste dans son état précédent.
 
 Un fichier dont le champ `format` ne vaut pas `"perrio-backup"` est rejeté avec le message
 « Ce fichier n'est pas une sauvegarde PERRIO. »
 
-### Transférer vers un autre appareil
-
-1. Sur l'appareil source : *Télécharger la sauvegarde*
-2. Transmettez le fichier (mail, clé USB, cloud)
-3. Sur l'appareil cible : *Importer* en mode **Fusionner**
-
-Le mode fusion rend ce transfert non destructif : l'appareil cible garde ce qu'il avait en propre.
-
 ### Réinitialiser
 
-*Tout effacer* supprime la base IndexedDB et recharge la page. Les deux sujets d'exemple sont
-alors recréés, puisque le seed se déclenche quand la table `subjects` est vide.
+*Tout effacer* envoie un `DELETE /api/data` puis recharge la page. Les deux sujets d'exemple sont
+alors recréés, puisque le client redépose le seed quand l'espace serveur est vide. L'effacement
+vaut **pour tous les appareils**.
 
 ---
 
@@ -117,16 +160,16 @@ alors recréés, puisque le seed se déclenche quand la table `subjects` est vid
 }
 ```
 
-Conventions communes à toutes les tables :
+Conventions communes à toutes les collections :
 
 - **Identifiants** : UUID v4 générés par `crypto.randomUUID()`
 - **Dates** : chaînes ISO 8601 en UTC (`2026-07-19T01:38:00.000Z`)
 - **Relations** : par identifiant (`subjectId`, `cardId`, `sessionId`), sans contrainte d'intégrité
-  côté base — c'est le code applicatif qui garantit la cohérence
+  déclarative — c'est le code applicatif qui garantit la cohérence
 
 ---
 
-## 5. Les six tables
+## 5. Les six collections
 
 ### `subjects` — les sujets d'étude
 
@@ -147,7 +190,8 @@ Conventions communes à toutes les tables :
 listes sans le supprimer.
 
 Supprimer un sujet déclenche une **cascade applicative** : ses flashcards, notes, amorçages et
-révisions sont effacés dans la même transaction (`SubjectService.remove`).
+révisions sont effacés dans la même opération (`SubjectService.remove`), puis l'ensemble part au
+serveur en une écriture.
 
 ### `primings` — les amorçages
 
@@ -278,21 +322,23 @@ contient au moins une session) et la composante **régularité** de la maîtrise
 
 ---
 
-## 6. Index de la base
+## 6. Volumétrie et performance
 
-Déclarés dans `db.ts`, ils conditionnent les requêtes rapides :
+Il n'y a **ni index ni requêtes** : le document entier est chargé en mémoire au démarrage, et
+chaque écran filtre les tableaux avec `.filter()`. C'est assumé — pour quelques milliers de lignes,
+un parcours de tableau est instantané et le code reste lisible.
 
-```
-subjects     id, name, archived, createdAt
-primings     id, subjectId, createdAt
-notes        id, subjectId, updatedAt
-flashcards   id, subjectId, dueDate, [subjectId+dueDate], suspended, *tags
-reviews      id, cardId, subjectId, sessionId, reviewedAt
-sessions     id, mode, startedAt
-```
+En revanche, chaque enregistrement renvoie **tout le document**. Les ordres de grandeur :
 
-L'index composé `[subjectId+dueDate]` cible la requête la plus fréquente — « les cartes dues de ce
-sujet » — et `*tags` est un index multi-entrées permettant de filtrer par tag.
+| Contenu | Poids approximatif du document |
+|---|---|
+| 200 cartes, 1 000 révisions | ~ 300 Ko |
+| 1 000 cartes, 10 000 révisions | ~ 2,5 Mo |
+
+La collection `reviews` croît indéfiniment, à raison d'une ligne par carte notée — c'est elle qui
+finira par peser. Si les enregistrements deviennent lents, deux pistes : purger les révisions de
+plus d'un an (les statistiques n'affichent que 30 jours et la maîtrise ne regarde que les 20
+dernières), ou scinder le blob en un document par collection pour n'écrire que ce qui change.
 
 ---
 
@@ -317,11 +363,17 @@ Le fichier étant du JSON simple, il est possible d'y injecter des cartes géné
 
 ## 8. Faire évoluer le schéma
 
-Deux endroits à toucher de concert :
+Il n'y a pas de migration automatique : le document stocké n'est jamais transformé, il est relu tel
+quel. Trois points d'attention :
 
-- **IndexedDB** : ajouter un `this.version(2).stores({ … })` dans `PerrioDb`, avec un `.upgrade()`
-  si les lignes existantes doivent être transformées. Dexie applique la migration au prochain
-  chargement.
-- **Fichier de sauvegarde** : incrémenter `version` dans `BackupService`, et faire accepter à
-  `import()` les anciennes versions en convertissant leurs données avant insertion — sans quoi les
-  sauvegardes déjà téléchargées par les utilisateurs deviendraient illisibles.
+- **Champ ajouté** : les documents déjà en place ne l'auront pas. Prévoyez une valeur par défaut à
+  la lecture (`normalizeDataset` dans `dataset.ts` est l'endroit prévu pour ça) plutôt que de
+  supposer sa présence.
+- **Champ renommé ou supprimé** : écrivez une conversion dans `normalizeDataset`, appliquée à
+  chaque chargement. Elle se propagera au serveur au premier enregistrement suivant.
+- **Fichier de sauvegarde** : incrémentez `version` dans `BackupService` et faites accepter à
+  `import()` les anciennes versions en convertissant leurs données — sans quoi les sauvegardes déjà
+  téléchargées deviendraient illisibles.
+
+Le contrat de l'API (`token`, `revision`) est indépendant du schéma des données : le faire évoluer
+n'oblige pas à toucher la fonction Netlify.

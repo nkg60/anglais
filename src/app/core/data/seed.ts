@@ -1,6 +1,6 @@
 import { DEFAULT_EASE } from '../algorithms/sm2';
 import { Flashcard, Note, Subject } from '../models';
-import { db, nowIso, uid } from './db';
+import { Dataset, emptyDataset, nowIso, uid } from './dataset';
 
 interface SeedCard {
   front: string;
@@ -52,11 +52,8 @@ const TENSES: SeedCard[] = [
   { front: 'Conditionnel type 2', back: 'If + prétérit, would + base verbale. « If I had time, I would travel. »', tags: ['temps', 'règle'] },
 ];
 
-/** Insère deux sujets d'exemple au tout premier lancement. */
-export async function seedIfEmpty(): Promise<void> {
-  const count = await db.subjects.count();
-  if (count > 0) return;
-
+/** Jeu de démonstration inséré quand l'espace serveur est encore vide. */
+export function buildSeed(): Dataset {
   const phrasal: Subject = {
     id: uid(),
     name: 'Phrasal verbs',
@@ -105,14 +102,13 @@ export async function seedIfEmpty(): Promise<void> {
     updatedAt: nowIso(),
   };
 
-  const cards = [
-    ...PHRASAL_VERBS.map((c, i) => makeCard(phrasal.id, c, i < 5 ? 0 : 1)),
-    ...TENSES.map((c, i) => makeCard(tenses.id, c, i < 4 ? 0 : 2)),
-  ];
-
-  await db.transaction('rw', db.subjects, db.notes, db.flashcards, async () => {
-    await db.subjects.bulkAdd([phrasal, tenses]);
-    await db.notes.add(note);
-    await db.flashcards.bulkAdd(cards);
-  });
+  return {
+    ...emptyDataset(),
+    subjects: [phrasal, tenses],
+    notes: [note],
+    flashcards: [
+      ...PHRASAL_VERBS.map((c, i) => makeCard(phrasal.id, c, i < 5 ? 0 : 1)),
+      ...TENSES.map((c, i) => makeCard(tenses.id, c, i < 4 ? 0 : 2)),
+    ],
+  };
 }

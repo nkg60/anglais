@@ -2,7 +2,24 @@
   command = "npm run build"
   publish = "dist/perrio/browser"
 
-# Application monopage : toutes les routes sont servies par index.html.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Serveur de développement : `netlify dev` sert l'API devant `ng serve`.
+[dev]
+  command = "npm start"
+  targetPort = 4200
+  framework = "#custom"
+  autoLaunch = false
+
+# L'API doit passer avant la redirection SPA, sinon elle serait avalée par index.html.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/data"
+  status = 200
+
+# Application monopage : toutes les autres routes sont servies par index.html.
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { db, nowIso, uid } from '../db/db';
+import { nowIso, uid } from '../data/dataset';
 import { Note } from '../models';
 import { StoreService } from './store.service';
 
@@ -18,7 +18,7 @@ export class NoteService {
     return this.store.notes().find((n) => n.id === id);
   }
 
-  async create(subjectId: string, title = 'Nouvelle note'): Promise<string> {
+  create(subjectId: string, title = 'Nouvelle note'): string {
     const note: Note = {
       id: uid(),
       subjectId,
@@ -31,18 +31,18 @@ export class NoteService {
       createdAt: nowIso(),
       updatedAt: nowIso(),
     };
-    await db.notes.add(note);
-    await this.store.refreshNotes();
+    this.store.mutate((d) => ({ ...d, notes: [...d.notes, note] }));
     return note.id;
   }
 
-  async update(id: string, changes: Partial<Note>): Promise<void> {
-    await db.notes.update(id, { ...changes, updatedAt: nowIso() });
-    await this.store.refreshNotes();
+  update(id: string, changes: Partial<Note>): void {
+    this.store.mutate((d) => ({
+      ...d,
+      notes: d.notes.map((n) => (n.id === id ? { ...n, ...changes, updatedAt: nowIso() } : n)),
+    }));
   }
 
-  async remove(id: string): Promise<void> {
-    await db.notes.delete(id);
-    await this.store.refreshNotes();
+  remove(id: string): void {
+    this.store.mutate((d) => ({ ...d, notes: d.notes.filter((n) => n.id !== id) }));
   }
 }

@@ -29,10 +29,26 @@ interface NavItem {
             </a>
           }
         </nav>
+        <span class="spacer"></span>
+        <span class="sync" [class]="'sync-' + store.syncState()" [title]="syncTitle()">
+          <span class="dot"></span>
+          <span class="sync-text">{{ store.syncState() }}</span>
+        </span>
       </div>
     </header>
 
     <main class="page">
+      @if (store.syncState() === 'erreur') {
+        <div class="card offline">
+          <strong>⚠️ Serveur injoignable</strong>
+          <p class="muted small">
+            {{ store.lastError() }} Vos modifications ne sont pas enregistrées tant que la
+            connexion n’est pas rétablie.
+          </p>
+          <button class="btn" (click)="store.reload()">Réessayer</button>
+        </div>
+      }
+
       @if (store.ready()) {
         <router-outlet />
       } @else {
@@ -68,5 +84,14 @@ export class App {
 
   constructor() {
     void this.store.init();
+
+    // Un rechargement en pleine écriture perdrait les dernières secondes de travail.
+    window.addEventListener('beforeunload', () => void this.store.flush());
+  }
+
+  protected syncTitle(): string {
+    const at = this.store.lastSyncedAt();
+    if (this.store.syncState() === 'erreur') return this.store.lastError() ?? 'Erreur';
+    return at ? `Dernier enregistrement : ${new Date(at).toLocaleString('fr-FR')}` : '';
   }
 }

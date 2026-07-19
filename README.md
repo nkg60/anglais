@@ -20,25 +20,36 @@ PERRIO — un cadre de méta-apprentissage en 6 phases.
 ## Stack
 
 - **Angular 22** — composants standalone, signals, routes lazy, aucun framework CSS
-- **Dexie / IndexedDB** — toutes les données restent dans le navigateur
-- **Netlify** — hébergement statique
+- **Netlify Functions** — une fonction unique exposée sur `/api/data`
+- **Netlify Blobs** — les données, dans un document JSON côté serveur
 
-Il n'y a **ni serveur ni compte utilisateur**. La contrepartie : les données sont liées à ce
-navigateur, sur cet appareil. L'écran « Données » permet d'exporter et de réimporter une sauvegarde
-JSON complète pour changer d'appareil ou se prémunir d'une perte.
+Les données sont **stockées côté serveur** et suivent donc tous vos appareils : vider le cache du
+navigateur ne détruit rien. En contrepartie, l'application **exige une connexion** — hors ligne, les
+modifications ne partent pas et un bandeau le signale.
 
-📄 **[docs/DONNEES.md](docs/DONNEES.md)** — format du fichier de sauvegarde, description champ par
-champ des six tables, et règles à respecter pour éditer une sauvegarde à la main.
+> ### ⚠️ Espace partagé, sans authentification
+>
+> Il n'y a ni compte ni cloisonnement : un seul jeu de données pour tout le site. **Toute personne
+> connaissant l'URL peut lire, modifier et effacer les cartes.** Gardez l'adresse privée. Pour lever
+> cette limite, il faudrait ajouter une clé de synchronisation secrète ou une vraie authentification.
+
+📄 **[docs/DONNEES.md](docs/DONNEES.md)** — architecture de stockage, contrat de l'API, gestion des
+écritures concurrentes, format du fichier de sauvegarde et description champ par champ.
 
 ## Démarrer
 
+L'application a besoin de son API : `netlify dev` sert la fonction devant le serveur Angular.
+
 ```bash
 npm install
-npm start          # http://localhost:4200
+npm run dev        # http://localhost:8888 — Angular + /api/data
 ```
 
-Au premier lancement, deux sujets d'exemple sont créés : **Phrasal verbs** (8 cartes, une note
-d'encodage complète) et **Temps verbaux** (7 cartes).
+`npm start` lance Angular seul (port 4200) : l'interface se charge mais toute écriture échoue,
+faute d'API. À réserver au travail purement visuel.
+
+Au premier lancement, l'espace serveur est vide : le client y dépose deux sujets d'exemple —
+**Phrasal verbs** (8 cartes, une note d'encodage complète) et **Temps verbaux** (7 cartes).
 
 ## Déployer sur Netlify
 
@@ -46,8 +57,9 @@ d'encodage complète) et **Temps verbaux** (7 cartes).
 npm run build      # sortie : dist/perrio/browser
 ```
 
-`netlify.toml` est déjà configuré (commande de build, dossier publié, redirection SPA). En reliant
-le dépôt à Netlify, aucun réglage supplémentaire n'est nécessaire.
+`netlify.toml` est déjà configuré : commande de build, dossier publié, dossier des fonctions,
+routage de `/api/*` avant la redirection SPA. En reliant le dépôt à Netlify, aucun réglage
+supplémentaire n'est nécessaire — Netlify Blobs s'active sans provisionnement.
 
 ## Algorithme de répétition espacée
 
@@ -74,12 +86,14 @@ Le badge « Maîtrisé » apparaît à partir de 85 %, avec au moins 10 cartes e
 ## Structure
 
 ```
+netlify/functions/
+└── data.mts          API /api/data adossée à Netlify Blobs
 docs/
-└── DONNEES.md        format d'export/import et schéma détaillé
+└── DONNEES.md        stockage, API, export/import et schéma détaillé
 src/app/
 ├── core/
 │   ├── algorithms/   sm2, maîtrise, série, dates
-│   ├── db/           schéma Dexie et jeu de démonstration
+│   ├── data/         client HTTP, document, règles de fusion, jeu de démonstration
 │   ├── models/       types partagés
 │   └── services/     store, sujets, cartes, notes, amorçages, révision, stats, sauvegarde
 └── features/
