@@ -32,6 +32,8 @@ export class StoreService {
   readonly sessions = signal<StudySession[]>([]);
 
   readonly ready = signal(false);
+  /** Vrai dès qu'un jeu de données a été obtenu du serveur au moins une fois. */
+  readonly loaded = signal(false);
   readonly syncState = signal<SyncState>('chargement');
   readonly lastError = signal<string | null>(null);
   readonly lastSyncedAt = signal<string | null>(null);
@@ -57,6 +59,7 @@ export class StoreService {
         this.apply(buildSeed());
         await this.persistNow();
       }
+      this.loaded.set(true);
     } catch (error) {
       this.apply(emptyDataset());
       this.fail(error);
@@ -72,6 +75,7 @@ export class StoreService {
       const doc = await this.api.load();
       this.token = doc.token;
       this.apply(doc.data ?? emptyDataset());
+      this.loaded.set(true);
       this.lastSyncedAt.set(doc.updatedAt);
       this.syncState.set('synchronisé');
       this.lastError.set(null);

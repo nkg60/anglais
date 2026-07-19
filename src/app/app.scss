@@ -111,7 +111,13 @@
   margin-bottom: var(--space);
 }
 
-.offline p {
+.update-banner {
+  border-left: 3px solid var(--primary);
+  margin-bottom: var(--space);
+}
+
+.offline p,
+.update-banner p {
   margin: 4px 0 12px;
 }
 

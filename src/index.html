@@ -9,10 +9,20 @@
       name="description"
       content="Application d'apprentissage par flashcards et répétition espacée, guidée par le système PERRIO."
     />
-    <meta name="theme-color" content="#4f7cff" />
+    <meta name="theme-color" content="#4f7cff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#161a21" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="manifest" href="manifest.webmanifest" />
+
+    <!-- iOS ignore le manifeste : ces balises assurent l'ajout à l'écran d'accueil. -->
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="PERRIO" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="mobile-web-app-capable" content="yes" />
   </head>
   <body>
     <app-root></app-root>
+    <noscript>Activez JavaScript pour utiliser PERRIO.</noscript>
   </body>
 </html>

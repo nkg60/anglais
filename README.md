@@ -20,6 +20,7 @@ PERRIO — un cadre de méta-apprentissage en 6 phases.
 ## Stack
 
 - **Angular 22** — composants standalone, signals, routes lazy, aucun framework CSS
+- **PWA** — installable sur Android et iOS via `@angular/service-worker`
 - **Netlify Functions** — une fonction unique exposée sur `/api/data`
 - **Netlify Blobs** — les données, dans un document JSON côté serveur
 
@@ -60,6 +61,37 @@ npm run build      # sortie : dist/perrio/browser
 `netlify.toml` est déjà configuré : commande de build, dossier publié, dossier des fonctions,
 routage de `/api/*` avant la redirection SPA. En reliant le dépôt à Netlify, aucun réglage
 supplémentaire n'est nécessaire — Netlify Blobs s'active sans provisionnement.
+
+## Installer sur téléphone
+
+L'application est une PWA : elle s'installe depuis le navigateur, sans passer par un store.
+
+**Android (Chrome)** — ouvrez l'URL du site, puis menu ⋮ → *Ajouter à l'écran d'accueil* (ou
+*Installer l'application*). Chrome propose parfois l'installation spontanément après quelques
+secondes. L'icône rejoint le tiroir d'applications et l'app s'ouvre en plein écran, sans barre
+d'adresse.
+
+**iOS (Safari)** — bouton Partager → *Sur l'écran d'accueil*. Safari ignore le manifeste, d'où les
+balises `apple-touch-icon` dans `index.html`.
+
+Deux prérequis, tous deux déjà remplis en production : le site doit être servi en **HTTPS** (Netlify
+le fait par défaut) et le **service worker** n'est actif que dans un build de production — en
+`ng serve`, l'installation n'est pas proposée.
+
+Un appui long sur l'icône donne accès à deux raccourcis : *Réviser* et *Sujets*.
+
+### Ce que la PWA apporte — et ce qu'elle n'apporte pas
+
+Elle apporte l'installation, le plein écran, le démarrage instantané et la mise en cache de
+l'interface.
+
+Elle **ne rend pas l'application utilisable hors ligne** : les cartes vivent sur le serveur, donc
+sans réseau la coquille se charge mais aucune donnée ne s'affiche — un écran explicite le dit,
+plutôt que de montrer des compteurs à zéro trompeurs. Rendre les révisions possibles hors ligne
+supposerait de remettre un cache local et une file de synchronisation.
+
+Quand une nouvelle version est déployée, le service worker la télécharge en arrière-plan et un
+bandeau propose de recharger : sans cela, une PWA installée reste figée sur sa version.
 
 ## Algorithme de répétition espacée
 

@@ -45,6 +45,18 @@ au rouge. Un bandeau propose alors de réessayer.
 
 Avant la fermeture de l'onglet, un `beforeunload` force l'envoi de ce qui n'est pas encore parti.
 
+### Le service worker ne met jamais les données en cache
+
+L'application est installable (PWA) et son service worker met en cache la coquille — HTML, JS, CSS,
+icônes. **Les appels à `/api/data` en sont exclus** : `ngsw-config.json` retire `/api/**` des
+`navigationUrls`, et aucun `dataGroup` n'est déclaré. Une réponse périmée servie depuis le cache
+serait pire que pas de réponse du tout, puisqu'elle réécrirait ensuite le serveur avec un état
+dépassé.
+
+Conséquence hors ligne : la coquille se charge instantanément, mais aucune donnée n'est disponible.
+L'application affiche alors un écran d'erreur explicite au lieu de compteurs à zéro qui laisseraient
+croire à un espace vide.
+
 ---
 
 ## 2. L'API
