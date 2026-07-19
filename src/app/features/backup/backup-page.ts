@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { BackupService } from '../../core/services/backup.service';
+import { BackupService, ImportMode, ImportReport } from '../../core/services/backup.service';
 import { StoreService } from '../../core/services/store.service';
 
 @Component({
@@ -36,11 +36,44 @@ import { StoreService } from '../../core/services/store.service';
 
       <div class="card">
         <div class="section-title">Importer</div>
-        <p class="muted small">
-          <strong>Attention :</strong> l’import remplace intégralement le contenu actuel de ce
-          navigateur.
-        </p>
+
+        <div class="modes">
+          <label class="mode" [class.selected]="mode() === 'merge'">
+            <input type="radio" name="mode" value="merge" [checked]="mode() === 'merge'" (change)="mode.set('merge')" />
+            <span>
+              <strong>Fusionner</strong>
+              <span class="muted small">
+                Conserve tout ce qui est déjà là. Ajoute les nouveautés et ne met à jour une fiche
+                existante que si la version importée est plus récente.
+              </span>
+            </span>
+          </label>
+          <label class="mode" [class.selected]="mode() === 'replace'">
+            <input type="radio" name="mode" value="replace" [checked]="mode() === 'replace'" (change)="mode.set('replace')" />
+            <span>
+              <strong>Remplacer</strong>
+              <span class="muted small">
+                Efface le contenu actuel et restaure exactement l’état du fichier.
+              </span>
+            </span>
+          </label>
+        </div>
+
         <input type="file" accept="application/json" (change)="importData($event)" />
+
+        @if (report(); as r) {
+          <div class="report">
+            <span class="badge badge-success">{{ r.ajoutes }} ajoutés</span>
+            @if (r.mode === 'merge') {
+              <span class="badge badge-primary">{{ r.misAJour }} mis à jour</span>
+              <span class="badge">{{ r.ignores }} déjà à jour</span>
+              @if (r.orphelins > 0) {
+                <span class="badge badge-warn">{{ r.orphelins }} orphelins ignorés</span>
+              }
+            }
+          </div>
+        }
+
         @if (message(); as m) {
           <p class="small" [class.error]="isError()">{{ m }}</p>
         }
@@ -62,6 +95,46 @@ import { StoreService } from '../../core/services/store.service';
       gap: 8px;
     }
 
+    .modes {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .mode {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      margin: 0;
+      font-weight: 400;
+    }
+
+    .mode.selected {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .mode input {
+      width: auto;
+      margin-top: 3px;
+      accent-color: var(--primary);
+    }
+
+    .mode span span {
+      display: block;
+    }
+
+    .report {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
     .error {
       color: var(--danger);
     }
@@ -73,6 +146,8 @@ export class BackupPage {
 
   protected readonly message = signal<string | null>(null);
   protected readonly isError = signal(false);
+  protected readonly mode = signal<ImportMode>('merge');
+  protected readonly report = signal<ImportReport | null>(null);
 
   protected async exportData(): Promise<void> {
     await this.backup.export();
@@ -83,11 +158,17 @@ export class BackupPage {
     const file = input.files?.[0];
     if (!file) return;
     try {
-      await this.backup.import(file);
+      const result = await this.backup.import(file, this.mode());
       this.isError.set(false);
-      this.message.set('Import réussi : vos données ont été remplacées.');
+      this.report.set(result);
+      this.message.set(
+        result.mode === 'merge'
+          ? 'Fusion terminée : votre contenu existant a été conservé.'
+          : 'Import terminé : vos données ont été remplacées.',
+      );
     } catch (error) {
       this.isError.set(true);
+      this.report.set(null);
       this.message.set(error instanceof Error ? error.message : 'Import impossible.');
     } finally {
       input.value = '';

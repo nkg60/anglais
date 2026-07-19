@@ -43,14 +43,45 @@ sans filtrage ni compression. Il est lisible et modifiable à la main.
 
 ## 3. Importer
 
-Écran **Données** → *Importer* → sélection du fichier.
+Écran **Données** → choix du mode → sélection du fichier.
 
-> **L'import est un remplacement, pas une fusion.** Les six tables sont vidées puis réécrites avec
-> le contenu du fichier. Tout ce qui existait dans ce navigateur et qui n'est pas dans le fichier
-> est perdu. Exportez avant d'importer si vous avez le moindre doute.
+### Mode « Fusionner » (par défaut)
 
-Le tout s'exécute dans une transaction Dexie unique : en cas d'erreur en cours de route, IndexedDB
-annule l'ensemble et la base reste dans son état précédent.
+Le contenu local est **conservé**. L'import ne fait qu'ajouter et rafraîchir :
+
+| Table | Règle appliquée |
+|---|---|
+| `subjects`, `notes`, `flashcards` | Rapprochement par `id`. Inconnu → ajouté. Déjà présent → écrasé **seulement si** l'`updatedAt` importé est strictement postérieur au local, sinon ignoré. |
+| `primings`, `reviews`, `sessions` | Journaux immuables : les `id` inconnus sont ajoutés, les autres laissés intacts. Aucun historique n'est jamais écrasé. |
+
+Deux garde-fous supplémentaires :
+
+- Une note, une carte ou un amorçage dont le `subjectId` ne correspond à aucun sujet (ni local, ni
+  importé) est **rejeté comme orphelin** plutôt qu'inséré dans le vide. Idem pour une révision dont
+  la carte est introuvable.
+- Les sujets sont traités en premier, afin qu'un sujet importé dans ce même fichier compte comme
+  destination valide pour ses propres cartes.
+
+À la fin, un rapport affiche le détail : *ajoutés · mis à jour · déjà à jour · orphelins ignorés*.
+
+L'opération est **idempotente** : réimporter deux fois le même fichier ne crée aucun doublon — le
+second passage se solde par « tout est déjà à jour ».
+
+Comme la comparaison se fait sur `updatedAt`, c'est bien la version la plus récente qui gagne,
+quelle que soit sa provenance. Cela permet d'aller-retour entre deux appareils sans perdre le
+travail fait de part et d'autre, **à condition que les modifications portent sur des fiches
+différentes** : si la même carte a été modifiée des deux côtés, la plus récente écrase l'autre
+sans fusion champ par champ ni avertissement.
+
+### Mode « Remplacer »
+
+Les six tables sont vidées puis réécrites à l'identique. À réserver à la restauration d'un état
+exact — tout ce qui existait localement et qui n'est pas dans le fichier est perdu.
+
+### Dans les deux cas
+
+L'opération s'exécute dans une transaction Dexie unique : en cas d'erreur en cours de route,
+IndexedDB annule l'ensemble et la base reste dans son état précédent.
 
 Un fichier dont le champ `format` ne vaut pas `"perrio-backup"` est rejeté avec le message
 « Ce fichier n'est pas une sauvegarde PERRIO. »
@@ -59,7 +90,9 @@ Un fichier dont le champ `format` ne vaut pas `"perrio-backup"` est rejeté avec
 
 1. Sur l'appareil source : *Télécharger la sauvegarde*
 2. Transmettez le fichier (mail, clé USB, cloud)
-3. Sur l'appareil cible : *Importer*, puis sélectionnez le fichier
+3. Sur l'appareil cible : *Importer* en mode **Fusionner**
+
+Le mode fusion rend ce transfert non destructif : l'appareil cible garde ce qu'il avait en propre.
 
 ### Réinitialiser
 
@@ -269,9 +302,12 @@ Le fichier étant du JSON simple, il est possible d'y injecter des cartes géné
 (tableur, script, export d'un autre outil). Pour qu'un import réussisse :
 
 1. Conservez `"format": "perrio-backup"` et `"version": 1`
-2. Chaque `id` doit être unique dans sa table — un doublon fait échouer le `bulkAdd`
+2. Chaque `id` doit être unique dans sa table. En mode fusion, réutiliser un `id` existant met à
+   jour la fiche correspondante au lieu d'en créer une seconde — pratique pour corriger en masse,
+   piégeur si les identifiants ont été copiés-collés sans y penser
 3. Chaque `subjectId` d'une carte, note ou amorçage doit correspondre à un `id` présent dans
-   `subjects`, sinon l'élément devient orphelin et n'apparaîtra nulle part
+   `subjects` (du fichier ou déjà en base), faute de quoi la ligne est rejetée comme orpheline
+   et comptée comme telle dans le rapport d'import
 4. Une carte neuve se déclare avec `ease: 2.5`, `interval: 0`, `repetitions: 0`, `lapses: 0`,
    `totalReviews: 0`, `correctReviews: 0`, `lastReviewedAt: null`, `suspended: false` et une
    `dueDate` à maintenant ou dans le passé pour qu'elle soit immédiatement proposée
