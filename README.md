@@ -27,6 +27,9 @@ Il n'y a **ni serveur ni compte utilisateur**. La contrepartie : les données so
 navigateur, sur cet appareil. L'écran « Données » permet d'exporter et de réimporter une sauvegarde
 JSON complète pour changer d'appareil ou se prémunir d'une perte.
 
+📄 **[docs/DONNEES.md](docs/DONNEES.md)** — format du fichier de sauvegarde, description champ par
+champ des six tables, et règles à respecter pour éditer une sauvegarde à la main.
+
 ## Démarrer
 
 ```bash
@@ -71,6 +74,8 @@ Le badge « Maîtrisé » apparaît à partir de 85 %, avec au moins 10 cartes e
 ## Structure
 
 ```
+docs/
+└── DONNEES.md        format d'export/import et schéma détaillé
 src/app/
 ├── core/
 │   ├── algorithms/   sm2, maîtrise, série, dates
