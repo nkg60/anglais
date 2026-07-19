@@ -30,6 +30,7 @@ import { StoreService } from '../../core/services/store.service';
       </div>
 
       @if (matieres().length) {
+        <div class="section-title">Reprendre une matière</div>
         <div class="grid">
           @for (m of matieres(); track m.id) {
             <button class="card tuile" (click)="choisir(m.id)" [style.border-left-color]="m.color">
