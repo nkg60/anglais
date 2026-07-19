@@ -69,9 +69,19 @@ export class ReviewService {
     return this.store.flashcards().find((c) => c.id === id) ?? null;
   });
 
+  /**
+   * Cartes définitivement terminées : celles qui ont quitté la file.
+   *
+   * Distinct de `reviewedCount`, qui compte les notations — une carte ratée en
+   * reçoit plusieurs et ferait dépasser le total affiché.
+   */
+  readonly completedCount = computed(() =>
+    Math.max(0, this.initialTotal() - this.queue().length),
+  );
+
   readonly progress = computed(() => {
     const total = this.initialTotal();
-    return total === 0 ? 0 : Math.round((this.reviewedCount() / total) * 100);
+    return total === 0 ? 0 : Math.round((this.completedCount() / total) * 100);
   });
 
   /** Démarre une session. Renvoie false si aucune carte n'est due. */

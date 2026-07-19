@@ -17,7 +17,7 @@ import { SubjectService } from '../../core/services/subject.service';
         <div class="row small muted">
           <span>{{ modeLabel() }}</span>
           <span class="spacer"></span>
-          <span>{{ review.reviewedCount() }} / {{ review.initialTotal() }}</span>
+          <span>{{ review.completedCount() }} / {{ review.initialTotal() }}</span>
           <button class="btn btn-ghost small-btn" (click)="stop()">Terminer</button>
         </div>
 
