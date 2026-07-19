@@ -47,7 +47,7 @@ Avant la fermeture de l'onglet, un `beforeunload` force l'envoi de ce qui n'est 
 
 ---
 
-## 1 bis. L'API
+## 2. L'API
 
 Une seule fonction Netlify, exposée sur `/api/data`.
 
@@ -71,13 +71,13 @@ enregistrement. Quand un ETag est disponible, il sert en complément à demander
 conditionnelle (`onlyIfMatch`), ce qui ferme la fenêtre entre la lecture et l'écriture.
 
 Côté client, un 409 n'est pas une erreur affichée à l'utilisateur : `StoreService` **fusionne**
-l'état distant avec le sien (mêmes règles qu'à l'import, voir § 3) puis réessaie sur la nouvelle
+l'état distant avec le sien (mêmes règles qu'à l'import, voir § 4) puis réessaie sur la nouvelle
 version, jusqu'à cinq fois. Deux onglets qui créent chacun un sujet au même instant conservent donc
 les deux.
 
 ---
 
-## 2. Exporter
+## 3. Exporter
 
 Écran **Données** → *Télécharger la sauvegarde*.
 
@@ -87,7 +87,7 @@ sans filtrage ni compression. Il est lisible et modifiable à la main.
 Les données vivant désormais côté serveur, l'export n'est plus l'unique filet de sécurité : il sert
 à archiver un état avant une manipulation risquée, ou à transporter un jeu de cartes ailleurs.
 
-## 3. Importer
+## 4. Importer
 
 Écran **Données** → choix du mode → sélection du fichier.
 
@@ -95,7 +95,7 @@ Les données vivant désormais côté serveur, l'export n'est plus l'unique file
 
 Le contenu local est **conservé**. L'import ne fait qu'ajouter et rafraîchir :
 
-| Table | Règle appliquée |
+| Collection | Règle appliquée |
 |---|---|
 | `subjects`, `notes`, `flashcards` | Rapprochement par `id`. Inconnu → ajouté. Déjà présent → écrasé **seulement si** l'`updatedAt` importé est strictement postérieur au local, sinon ignoré. |
 | `primings`, `reviews`, `sessions` | Journaux immuables : les `id` inconnus sont ajoutés, les autres laissés intacts. Aucun historique n'est jamais écrasé. |
@@ -119,7 +119,7 @@ travail fait de part et d'autre, **à condition que les modifications portent su
 différentes** : si la même carte a été modifiée des deux côtés, la plus récente écrase l'autre
 sans fusion champ par champ ni avertissement.
 
-Ces mêmes règles servent à résoudre les conflits d'écriture entre onglets (§ 1 bis) : c'est la même
+Ces mêmes règles servent à résoudre les conflits d'écriture entre onglets (§ 2) : c'est la même
 fonction `mergeDatasets`, pour qu'il n'existe qu'une seule définition de « fusionner » dans le code.
 
 ### Mode « Remplacer »
@@ -144,7 +144,7 @@ vaut **pour tous les appareils**.
 
 ---
 
-## 4. Format du fichier
+## 5. Format du fichier
 
 ```jsonc
 {
@@ -169,7 +169,7 @@ Conventions communes à toutes les collections :
 
 ---
 
-## 5. Les six collections
+## 6. Les six collections
 
 ### `subjects` — les sujets d'étude
 
@@ -277,7 +277,7 @@ retire la carte des sessions sans l'effacer.
 
 ### `reviews` — le journal des révisions
 
-Table **immuable** : une ligne par notation, jamais modifiée ensuite. C'est la source de toutes les
+Collection **immuable** : une ligne par notation, jamais modifiée ensuite. C'est la source de toutes les
 statistiques (courbe de rétention, taux de réussite, maîtrise).
 
 ```json
@@ -316,13 +316,13 @@ Supprimer une carte supprime aussi ses révisions.
 `mode` vaut `"retrieval"` ou `"interleaving"`. `endedAt` reste `null` tant que la session est en
 cours (fermeture d'onglet en plein milieu, par exemple).
 
-Cette table alimente deux calculs : la **série de jours consécutifs** (un jour compte dès qu'il
+Cette collection alimente deux calculs : la **série de jours consécutifs** (un jour compte dès qu'il
 contient au moins une session) et la composante **régularité** de la maîtrise. Une session en mode
 `interleaving` valide par ailleurs la phase Entrelacement des sujets concernés.
 
 ---
 
-## 6. Volumétrie et performance
+## 7. Volumétrie et performance
 
 Il n'y a **ni index ni requêtes** : le document entier est chargé en mémoire au démarrage, et
 chaque écran filtre les tableaux avec `.filter()`. C'est assumé — pour quelques milliers de lignes,
@@ -342,26 +342,28 @@ dernières), ou scinder le blob en un document par collection pour n'écrire que
 
 ---
 
-## 7. Modifier une sauvegarde à la main
+## 8. Modifier une sauvegarde à la main
 
 Le fichier étant du JSON simple, il est possible d'y injecter des cartes générées ailleurs
 (tableur, script, export d'un autre outil). Pour qu'un import réussisse :
 
 1. Conservez `"format": "perrio-backup"` et `"version": 1`
-2. Chaque `id` doit être unique dans sa table. En mode fusion, réutiliser un `id` existant met à
+2. Chaque `id` doit être unique dans sa collection. En mode fusion, réutiliser un `id` existant met à
    jour la fiche correspondante au lieu d'en créer une seconde — pratique pour corriger en masse,
    piégeur si les identifiants ont été copiés-collés sans y penser
 3. Chaque `subjectId` d'une carte, note ou amorçage doit correspondre à un `id` présent dans
-   `subjects` (du fichier ou déjà en base), faute de quoi la ligne est rejetée comme orpheline
+   `subjects` (du fichier ou déjà présent dans l'espace), faute de quoi la ligne est rejetée comme orpheline
    et comptée comme telle dans le rapport d'import
 4. Une carte neuve se déclare avec `ease: 2.5`, `interval: 0`, `repetitions: 0`, `lapses: 0`,
    `totalReviews: 0`, `correctReviews: 0`, `lastReviewedAt: null`, `suspended: false` et une
    `dueDate` à maintenant ou dans le passé pour qu'elle soit immédiatement proposée
-5. Les six tableaux doivent être présents ; un tableau absent est traité comme vide
+5. Les six collections peuvent être omises : une collection absente est traitée comme vide
+   (`normalizeDataset`), ce qui permet d'importer un fichier ne contenant que des sujets et des
+   cartes
 
 ---
 
-## 8. Faire évoluer le schéma
+## 9. Faire évoluer le schéma
 
 Il n'y a pas de migration automatique : le document stocké n'est jamais transformé, il est relu tel
 quel. Trois points d'attention :
@@ -377,3 +379,54 @@ quel. Trois points d'attention :
 
 Le contrat de l'API (`token`, `revision`) est indépendant du schéma des données : le faire évoluer
 n'oblige pas à toucher la fonction Netlify.
+
+---
+
+## 10. Travailler sur les données en local
+
+Le serveur de développement doit servir la fonction en même temps qu'Angular :
+
+```bash
+npm run dev        # netlify dev → http://localhost:8888
+```
+
+`npm start` lance Angular seul sur le port 4200 : l'interface s'affiche, mais toute écriture échoue
+faute d'API et l'indicateur passe au rouge. À réserver au travail purement visuel.
+
+Le store local de `netlify dev` est un bac à sable : ses données sont **distinctes** de celles du
+site déployé. Le document se trouve dans
+`.netlify/blobs-serve/entries/unlinked/site:perrio/dataset` — dossier déjà ignoré par git.
+
+### Inspecter et manipuler l'espace en ligne de commande
+
+```bash
+# Lire l'état courant
+curl -s localhost:8888/api/data | jq '{revision, token, sujets: (.data.subjects | length)}'
+
+# Vider l'espace — le jeu de démonstration sera recréé au prochain chargement
+curl -s -X DELETE localhost:8888/api/data
+
+# Injecter une sauvegarde. Le token doit être celui renvoyé par le GET juste avant ;
+# sur un espace vierge, c'est null.
+TOKEN=$(curl -s localhost:8888/api/data | jq -c '.token')
+curl -s -X PUT localhost:8888/api/data -H 'content-type: application/json' \
+  -d "{\"token\": $TOKEN, \"data\": $(jq -c '{subjects, primings, notes, flashcards, reviews, sessions}' perrio-2026-07-19.json)}"
+```
+
+Le `data` d'un `PUT` attend les six collections **sans** l'enveloppe `format` / `version` /
+`exportedAt` du fichier de sauvegarde : d'où le `jq` qui ne retient que les collections.
+
+Un `PUT` dont le `token` ne correspond plus renvoie **409**, accompagné de l'état distant à jour :
+c'est le comportement normal, pas une panne. Le client Angular s'en sert pour fusionner et
+réessayer.
+
+### Vérifier une modification du format
+
+Le chemin le plus court pour valider un changement de schéma de bout en bout :
+
+1. `curl -X DELETE localhost:8888/api/data` pour repartir d'un espace vierge
+2. Recharger l'application : le seed est réinséré au nouveau format
+3. Faire une révision, puis relire `/api/data` et vérifier que les champs attendus sont là
+4. Exporter, réimporter en mode **Fusionner**, et vérifier que le rapport annonce « tout est déjà à
+   jour » — si des lignes sont ajoutées ou déclarées orphelines, le format d'export et celui du
+   store ont divergé
