@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -6,6 +6,7 @@ import {
   MATIERE_ICONS,
   MatiereService,
 } from '../../core/services/matiere.service';
+import { StoreService } from '../../core/services/store.service';
 
 /**
  * Porte d'entrée de l'application : on choisit d'abord la matière à réviser.
@@ -192,19 +193,28 @@ import {
 })
 export class MatiereSelect {
   protected readonly service = inject(MatiereService);
+  private readonly store = inject(StoreService);
   private readonly router = inject(Router);
 
   protected readonly icones = MATIERE_ICONS;
   protected readonly couleurs = MATIERE_COLORS;
 
   protected readonly matieres = computed(() => this.service.list());
-  // Sans aucune matière, le formulaire s'ouvre d'emblée : il n'y a rien à choisir.
-  protected readonly creation = signal(this.service.list().length === 0);
+  protected readonly creation = signal(false);
 
   protected readonly nom = signal('');
   protected readonly description = signal('');
   protected readonly icone = signal(MATIERE_ICONS[0]);
   protected readonly couleur = signal(MATIERE_COLORS[0]);
+
+  constructor() {
+    // N'ouvrir le formulaire qu'une fois les données arrivées : avant cela la
+    // liste est vide par construction, et l'écran proposerait de créer une
+    // matière alors qu'« Anglais » existe déjà et n'attend qu'un clic.
+    effect(() => {
+      if (this.store.loaded() && this.matieres().length === 0) this.creation.set(true);
+    });
+  }
 
   protected choisir(id: string): void {
     this.service.select(id);
