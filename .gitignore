@@ -45,3 +45,6 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+
+# Artefact généré par `netlify dev` (runtime Deno des edge functions)
+deno.lock
