@@ -124,10 +124,71 @@ export class StoreService {
     this.scheduleSave();
   }
 
-  /** Remplace tout le contenu et enregistre immédiatement (import, restauration). */
-  async replaceAll(data: Dataset): Promise<void> {
+  /**
+   * Écrit un jeu de données importé et attend la confirmation du serveur.
+   *
+   * `authoritative` (mode « remplacer ») impose l'état importé : en cas de
+   * conflit de version, on adopte le jeton distant et on ré-écrit notre
+   * instantané tel quel, sans jamais refusionner l'ancien contenu — c'est ce
+   * qui garantit qu'un remplacement remplace vraiment. En mode fusion, un
+   * conflit est au contraire résolu en refusionnant l'état distant pour ne pas
+   * perdre d'écriture concurrente.
+   *
+   * Contrairement aux enregistrements de fond, l'échec est **propagé** : l'écran
+   * d'import peut ainsi signaler un vrai problème au lieu d'annoncer un succès.
+   */
+  async commitImport(data: Dataset, authoritative: boolean): Promise<void> {
+    // Une sauvegarde différée porterait sur l'ancien état : on l'annule.
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+    }
+    // Laisser une écriture déjà en vol se terminer avant d'imposer la nôtre.
+    if (this.inFlight) {
+      try {
+        await this.inFlight;
+      } catch {
+        /* ignoré : notre import fait autorité */
+      }
+    }
+
     this.apply(data);
-    await this.persistNow();
+    this.inFlight = this.writeImport(authoritative);
+    try {
+      await this.inFlight;
+    } finally {
+      this.inFlight = null;
+    }
+
+    if (this.dirty) {
+      this.dirty = false;
+      await this.persistNow();
+    }
+  }
+
+  private async writeImport(authoritative: boolean, attempt = 0): Promise<void> {
+    this.syncState.set('enregistrement');
+    try {
+      const { token, updatedAt } = await this.api.save(this.token, this.snapshot());
+      this.token = token;
+      this.lastSyncedAt.set(updatedAt);
+      this.syncState.set('synchronisé');
+      this.lastError.set(null);
+    } catch (error) {
+      if (error instanceof ConflictError && attempt < MAX_CONFLICT_RETRIES) {
+        this.token = error.remote.token;
+        if (!authoritative) {
+          // Fusion : on refusionne l'état distant pour ne rien perdre.
+          const { result } = mergeDatasets(this.snapshot(), error.remote.data ?? emptyDataset());
+          this.apply(result);
+        }
+        // Remplacement : on ré-impose notre instantané sans le modifier.
+        await this.writeImport(authoritative, attempt + 1);
+        return;
+      }
+      this.fail(error);
+      throw error instanceof Error ? error : new Error('Enregistrement impossible.');
+    }
   }
 
   /** Force l'envoi des modifications en attente. */

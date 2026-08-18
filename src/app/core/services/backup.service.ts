@@ -61,7 +61,7 @@ export class BackupService {
     const incoming = normalizeDataset(raw);
 
     if (mode === 'replace') {
-      await this.store.replaceAll(incoming);
+      await this.store.commitImport(incoming, true);
       return {
         mode,
         ajoutes:
@@ -78,7 +78,7 @@ export class BackupService {
     }
 
     const { result, report } = mergeDatasets(this.store.snapshot(), incoming);
-    await this.store.replaceAll(result);
+    await this.store.commitImport(result, false);
     return { mode, ...report };
   }
 
